@@ -1,0 +1,24 @@
+{
+  "name": "liquid-glass",
+  "version": "1.0.0",
+  "description": "Comprehensive iOS 26 Liquid Glass design system for SwiftUI. Provides API reference, HIG principles, design tokens, motion patterns, accessibility guidance, performance rules, anti-patterns, a pattern library for every common surface, and nine full-screen example apps that compile in Xcode 26.",
+  "author": {
+    "name": "heyparsadev",
+    "email": "kzn.parsa@icloud.com",
+    "url": "https://github.com/heyparsadev"
+  },
+  "homepage": "https://github.com/heyparsadev/liquid-glass-skill",
+  "repository": "https://github.com/heyparsadev/liquid-glass-skill",
+  "license": "MIT",
+  "keywords": [
+    "ios",
+    "ios26",
+    "swiftui",
+    "liquid-glass",
+    "apple",
+    "design-system",
+    "hig",
+    "ui",
+    "skill"
+  ]
+}

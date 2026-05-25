@@ -1,0 +1,19 @@
+{
+  "name": "liquid-glass",
+  "owner": {
+    "name": "heyparsadev",
+    "email": "kzn.parsa@icloud.com",
+    "url": "https://github.com/heyparsadev"
+  },
+  "description": "iOS 26 Liquid Glass tooling for Claude Code.",
+  "plugins": [
+    {
+      "name": "liquid-glass",
+      "source": ".",
+      "description": "Comprehensive iOS 26 Liquid Glass SwiftUI design skill — API reference, HIG, patterns, examples, accessibility, performance, anti-patterns.",
+      "version": "1.0.0",
+      "category": "design",
+      "tags": ["ios26", "swiftui", "liquid-glass", "design-system", "apple"]
+    }
+  ]
+}
