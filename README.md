@@ -20,20 +20,29 @@ A Claude Code **plugin + skill** for building iOS 26+ SwiftUI interfaces with Ap
 In Claude Code:
 
 ```
-/plugin marketplace add heyparsadev/liquid-glass-skill
-/plugin install liquid-glass@liquid-glass
+/plugin marketplace add https://github.com/heyparsadev/claude-plugins.git
+/plugin install liquid-glass@parsa-plugins
 ```
 
 That's it — the skill activates automatically the next time you write SwiftUI for iOS 26+.
 
+> 💡 Use the full `https://...git` URL (not the `owner/repo` shorthand) so cloning uses HTTPS and needs no SSH key.
+
 To update later:
 ```
-/plugin marketplace update liquid-glass
+/plugin marketplace update parsa-plugins
 ```
 
 To remove:
 ```
-/plugin uninstall liquid-glass@liquid-glass
+/plugin uninstall liquid-glass@parsa-plugins
+```
+
+The [claude-plugins](https://github.com/heyparsadev/claude-plugins) marketplace carries other plugins too. To install this one alone, use this repo directly:
+
+```
+/plugin marketplace add https://github.com/heyparsadev/liquid-glass-skill.git
+/plugin install liquid-glass@liquid-glass
 ```
 
 ## Install as a bare skill (without the plugin system)
