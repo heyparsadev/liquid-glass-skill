@@ -18,19 +18,7 @@ struct ProfileScreen: View {
                     GlassEffectContainer(spacing: 4) {
                         HStack(spacing: 4) {
                             ForEach(ProfileTab.allCases) { t in
-                                Button {
-                                    withAnimation(.bouncy) { tab = t }
-                                } label: {
-                                    Text(t.title)
-                                        .font(.callout.weight(.medium))
-                                        .padding(.horizontal, 16)
-                                        .padding(.vertical, 10)
-                                        .frame(maxWidth: .infinity)
-                                }
-                                .buttonStyle(t == tab ? .glassProminent : .glass)
-                                .tint(t == tab ? .accentColor : .clear)
-                                .foregroundStyle(t == tab ? .white : .primary)
-                                .glassEffectID("tab-\(t.rawValue)", in: ns)
+                                tabSegment(t)
                             }
                         }
                     }
@@ -58,6 +46,38 @@ struct ProfileScreen: View {
                     Button("Share", systemImage: "square.and.arrow.up") { }
                 }
             }
+        }
+    }
+
+    // `.glass` and `.glassProminent` are different concrete ButtonStyle types, and
+    // `.white` and `.primary` are different ShapeStyle types, so neither can be
+    // selected with a ternary — branch on the whole button instead.
+    @ViewBuilder
+    private func tabSegment(_ t: ProfileTab) -> some View {
+        if t == tab {
+            tabButton(t)
+                .buttonStyle(.glassProminent)
+                .tint(.accentColor)
+                .foregroundStyle(.white)
+                .glassEffectID("tab-\(t.rawValue)", in: ns)
+        } else {
+            tabButton(t)
+                .buttonStyle(.glass)
+                .tint(.clear)
+                .foregroundStyle(.primary)
+                .glassEffectID("tab-\(t.rawValue)", in: ns)
+        }
+    }
+
+    private func tabButton(_ t: ProfileTab) -> some View {
+        Button {
+            withAnimation(.bouncy) { tab = t }
+        } label: {
+            Text(t.title)
+                .font(.callout.weight(.medium))
+                .padding(.horizontal, 16)
+                .padding(.vertical, 10)
+                .frame(maxWidth: .infinity)
         }
     }
 

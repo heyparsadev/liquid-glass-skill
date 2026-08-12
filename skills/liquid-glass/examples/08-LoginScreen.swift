@@ -210,20 +210,39 @@ struct LoginScreen: View {
         GlassEffectContainer(spacing: 4) {
             HStack(spacing: 4) {
                 ForEach(Mode.allCases) { m in
-                    Button {
-                        withAnimation(.bouncy) { mode = m }
-                    } label: {
-                        Text(m.rawValue)
-                            .font(.callout.weight(.semibold))
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 12)
-                    }
-                    .buttonStyle(m == mode ? .glassProminent : .glass)
-                    .tint(m == mode ? .white.opacity(0.28) : .clear)
-                    .foregroundStyle(.white)
-                    .glassEffectID("seg-\(m.rawValue)", in: ns)
+                    segment(m)
                 }
             }
+        }
+    }
+
+    // `.glass` and `.glassProminent` are different concrete ButtonStyle types, so
+    // they cannot be selected with a ternary — branch on the whole button instead.
+    @ViewBuilder
+    private func segment(_ m: Mode) -> some View {
+        if m == mode {
+            segmentButton(m)
+                .buttonStyle(.glassProminent)
+                .tint(.white.opacity(0.28))
+                .foregroundStyle(.white)
+                .glassEffectID("seg-\(m.rawValue)", in: ns)
+        } else {
+            segmentButton(m)
+                .buttonStyle(.glass)
+                .tint(.clear)
+                .foregroundStyle(.white)
+                .glassEffectID("seg-\(m.rawValue)", in: ns)
+        }
+    }
+
+    private func segmentButton(_ m: Mode) -> some View {
+        Button {
+            withAnimation(.bouncy) { mode = m }
+        } label: {
+            Text(m.rawValue)
+                .font(.callout.weight(.semibold))
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 12)
         }
     }
 

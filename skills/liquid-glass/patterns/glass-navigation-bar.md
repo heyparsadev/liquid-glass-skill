@@ -46,7 +46,7 @@ NavigationStack {
 ```swift
 NavigationStack { ContentView() }
     .searchable(text: $query)
-    .searchToolbarBehavior(.minimized)
+    .searchToolbarBehavior(.minimize)
 ```
 
 ### Large title that fades into glass on scroll

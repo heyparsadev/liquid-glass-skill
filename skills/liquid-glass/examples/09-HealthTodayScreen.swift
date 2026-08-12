@@ -109,7 +109,7 @@ struct HealthTodayScreen: View {
                         .badge(3)
                         .tint(.red)
                 }
-                ToolbarSpacer(.fixed, spacing: 8)
+                ToolbarSpacer(.fixed, placement: .topBarTrailing)
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Share", systemImage: "square.and.arrow.up") { }
                 }
@@ -137,23 +137,42 @@ struct HealthTodayScreen: View {
             GlassEffectContainer(spacing: 4) {
                 HStack(spacing: 4) {
                     ForEach(Period.allCases) { p in
-                        Button {
-                            withAnimation(.bouncy) { period = p }
-                        } label: {
-                            Text(p.rawValue)
-                                .font(.footnote.weight(.semibold))
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 8)
-                        }
-                        .buttonStyle(p == period ? .glassProminent : .glass)
-                        .tint(p == period ? .white.opacity(0.3) : .clear)
-                        .foregroundStyle(.white)
-                        .glassEffectID("period-\(p.rawValue)", in: ns)
+                        periodSegment(p)
                     }
                 }
             }
         }
         .padding(.horizontal)
+    }
+
+    // `.glass` and `.glassProminent` are different concrete ButtonStyle types, so
+    // they cannot be selected with a ternary — branch on the whole button instead.
+    @ViewBuilder
+    private func periodSegment(_ p: Period) -> some View {
+        if p == period {
+            periodButton(p)
+                .buttonStyle(.glassProminent)
+                .tint(.white.opacity(0.3))
+                .foregroundStyle(.white)
+                .glassEffectID("period-\(p.rawValue)", in: ns)
+        } else {
+            periodButton(p)
+                .buttonStyle(.glass)
+                .tint(.clear)
+                .foregroundStyle(.white)
+                .glassEffectID("period-\(p.rawValue)", in: ns)
+        }
+    }
+
+    private func periodButton(_ p: Period) -> some View {
+        Button {
+            withAnimation(.bouncy) { period = p }
+        } label: {
+            Text(p.rawValue)
+                .font(.footnote.weight(.semibold))
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 8)
+        }
     }
 
     // MARK: Hero activity rings panel

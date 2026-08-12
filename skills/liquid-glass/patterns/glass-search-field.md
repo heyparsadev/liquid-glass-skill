@@ -17,7 +17,7 @@ struct LibraryView: View {
             }
             .navigationTitle("Library")
             .searchable(text: $query, prompt: "Search tracks, albums, artists")
-            .searchToolbarBehavior(.minimized)
+            .searchToolbarBehavior(.minimize)
             .onChange(of: query) { _, new in
                 results = lookup(new)
             }
@@ -81,5 +81,5 @@ When the search tab is active, the search field automatically takes prominence i
 ## Gotchas
 
 - Don't wrap a `TextField` and apply `.glassEffect()` to roll your own search field — you'll miss the system's adaptive Reduce Transparency / Tinted Mode handling.
-- `.searchToolbarBehavior(.minimized)` is the right default for content-heavy screens. Use the standard (non-minimized) behavior when search is the primary task on the screen.
+- `.searchToolbarBehavior(.minimize)` is the right default for content-heavy screens. Use the standard (non-minimized) behavior when search is the primary task on the screen.
 - `searchSuggestions` views inherit glass when wrapped in a system surface — don't add `.glassEffect()` to them.

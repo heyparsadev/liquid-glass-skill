@@ -322,7 +322,7 @@ Insert visible breathing room between glass toolbar items.
         Button("Draw", systemImage: "pencil") { }
         Button("Erase", systemImage: "eraser") { }
     }
-    ToolbarSpacer(.fixed, spacing: 20)
+    ToolbarSpacer(.fixed, placement: .topBarTrailing)
     ToolbarItem(placement: .topBarTrailing) {
         Button("Save", systemImage: "checkmark") { }
             .buttonStyle(.glassProminent)
@@ -330,7 +330,7 @@ Insert visible breathing room between glass toolbar items.
 }
 ```
 
-Variants: `ToolbarSpacer(.fixed, spacing: 20)` and `ToolbarSpacer(.flexible)`.
+Signature: `ToolbarSpacer(_ sizing: SpacerSizing = .flexible, placement: ToolbarItemPlacement = .automatic)`. There is no `spacing:` argument — the fixed size is fixed by the system.
 
 ### Badges
 ```swift
@@ -411,7 +411,7 @@ NavigationStack {
 
 ### `.searchToolbarBehavior(_:)`
 ```swift
-.searchToolbarBehavior(.minimized)   // collapses to icon until tapped
+.searchToolbarBehavior(.minimize)   // collapses to icon until tapped
 ```
 
 ### Default toolbar item
@@ -568,7 +568,7 @@ TabView { Tab(...) { ... } }
 
 // Search
 .searchable(text: $q)
-.searchToolbarBehavior(.minimized)
+.searchToolbarBehavior(.minimize)
 
 // A11y
 .glassEffect(reduceTransparency ? .identity : .regular)

@@ -60,7 +60,7 @@ struct DashboardScreen: View {
             }
             .navigationTitle("Health")
             .searchable(text: $query, prompt: "Search records")
-            .searchToolbarBehavior(.minimized)
+            .searchToolbarBehavior(.minimize)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Profile", systemImage: "person.crop.circle") { }
