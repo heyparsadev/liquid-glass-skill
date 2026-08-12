@@ -1,0 +1,32 @@
+name: Gallery
+options:
+  bundleIdPrefix: dev.heyparsa
+  deploymentTarget:
+    iOS: "26.0"
+targets:
+  Gallery:
+    type: application
+    platform: iOS
+    sources:
+      # The host app itself.
+      - Sources
+      # The example screens, referenced in place so this project and the skill
+      # can never drift apart. Editing an example here edits the skill.
+      - path: ../skills/liquid-glass/examples
+        name: Examples
+    info:
+      path: Info.plist
+      properties:
+        CFBundleDisplayName: Liquid Glass
+        UILaunchScreen: {}
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: dev.heyparsa.liquidglassgallery
+        GENERATE_INFOPLIST_FILE: NO
+        SWIFT_VERSION: "5.0"
+        TARGETED_DEVICE_FAMILY: "1"
+        CODE_SIGNING_REQUIRED: NO
+        CODE_SIGNING_ALLOWED: NO
+        CODE_SIGN_IDENTITY: ""

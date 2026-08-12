@@ -25,7 +25,7 @@ A Claude Code **plugin + skill** for building iOS 26+ SwiftUI interfaces with Ap
 </tr>
 </table>
 
-<sub>Rendered on iPhone 17 Pro, iOS 26.3, Xcode 26.3. The remaining four screens — Photo Detail, Chat, Login, and the Health app's other tabs — are in <a href="docs/screenshots">docs/screenshots</a>.</sub>
+<sub>Rendered on iPhone 17 Pro, iOS 26.3, Xcode 26.3. The remaining four screens — Photo Detail, Chat, Login, and the Health app's other tabs — are in <a href="docs/screenshots">docs/screenshots</a>. Run them yourself with the <a href="Gallery">Gallery app</a>: <code>cd Gallery && xcodegen generate && open Gallery.xcodeproj</code>.</sub>
 
 ## What's inside
 
