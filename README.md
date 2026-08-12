@@ -2,6 +2,31 @@
 
 A Claude Code **plugin + skill** for building iOS 26+ SwiftUI interfaces with Apple's **Liquid Glass** design language.
 
+<table>
+<tr>
+<td width="33%"><img src="docs/screenshots/01-settings.png" alt="Settings screen"></td>
+<td width="33%"><img src="docs/screenshots/02-music-player.png" alt="Music player screen"></td>
+<td width="33%"><img src="docs/screenshots/03-onboarding.png" alt="Onboarding flow"></td>
+</tr>
+<tr>
+<td align="center"><sub>Settings — minimized search, glass toolbar</sub></td>
+<td align="center"><sub>Music player — morphing transport controls</sub></td>
+<td align="center"><sub>Onboarding — glass over live gradient</sub></td>
+</tr>
+<tr>
+<td><img src="docs/screenshots/05-dashboard.png" alt="Dashboard screen"></td>
+<td><img src="docs/screenshots/07-profile.png" alt="Profile screen"></td>
+<td><img src="docs/screenshots/09-health.png" alt="Health app shell"></td>
+</tr>
+<tr>
+<td align="center"><sub>Dashboard — glass cards on scrolling content</sub></td>
+<td align="center"><sub>Profile — morphing glass tab switcher</sub></td>
+<td align="center"><sub>Health — full TabView shell with FAB</sub></td>
+</tr>
+</table>
+
+<sub>Rendered on iPhone 17 Pro, iOS 26.3, Xcode 26.3. The remaining four screens — Photo Detail, Chat, Login, and the Health app's other tabs — are in <a href="docs/screenshots">docs/screenshots</a>.</sub>
+
 ## What's inside
 
 - **API reference** — every Liquid Glass SwiftUI symbol with exact signatures (`.glassEffect`, `GlassEffectContainer`, `Glass`, `.glassEffectID`, `.glassEffectUnion`, button styles, toolbar/nav/tab integration, `.tabBarMinimizeBehavior`, `.tabViewBottomAccessory`, …)
