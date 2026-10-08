@@ -25,5 +25,6 @@ Findings marked by an agent are claims until a `verify:` file confirms them.
 | [verify:swiftui-updates#1](verify-swiftui-updates-1.md) | Verify | done — 5 confirmed, 1 partially |
 | [verify:swiftui-updates#2](verify-swiftui-updates-2.md) | Verify | done — 6 confirmed |
 | [verify:swiftui-updates#3](verify-swiftui-updates-3.md) | Verify | done — 6 confirmed |
-| verify:swiftui-updates#4 | Verify | running |
+| [verify:swiftui-updates#4](verify-swiftui-updates-4.md) | Verify | done — 6 confirmed |
 | verify:swiftui-updates#5 | Verify | running |
+| verify:swiftui-updates#6 | Verify | running |
