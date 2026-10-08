@@ -1,0 +1,107 @@
+# verify:truth-glass-core#2
+
+_Phase: Verify — independent re-check of findings from [truth-glass-core](truth-glass-core.md)_
+
+## Finding 6 — **CONFIRMED**
+
+> Anti-pattern #6 'Right' block: `.glassEffect(.regular, in: .rect(cornerRadius: .containerConcentric))` inside a VStack whose outer shape is only `.background(RoundedRectangle(cornerRadius: 28).fill(.background))`.
+
+- **Established truth:** The skill is wrong at 07-anti-patterns.md:154. In SwiftUI, `.rect(cornerRadius:)` is declared `@export(implementation) static func rect(cornerRadius: CGFloat, style: RoundedCornerStyle = .continuous) -> Self` (available when Self is RoundedRectangle). Because the parameter is a CGFloat, `.rect(cornerRadius: .containerConcentric)` does not compile. The shipping concentric API is `ConcentricRectangle` / `.rect(corners: .concentric…)`, which resolves against a container shape. Per the docs, a custom view gets that shape only from `nonisolated func containerShape(_ shape: some RoundedRectangularShape) -> some View` (iOS, iPadOS, Mac Catalyst, macOS, tvOS, visionOS and watchOS 26.0+, not deprecated); otherwise it comes from system-provided views or from views that reach the device's rounded corners. A `.background(RoundedRectangle…)` is not a documented source, and Apple's own containerShape example applies both `.containerShape(shape)` and `.background(shape.fill(.background))`. The quoted ConcentricRectangle sentence is verbatim. A working 'Right' block: `VStack { Button("Save") {}.glassEffect(.regular, in: .rect(corners: .concentric(minimum: 12), isUniform: true)) }.padding().containerShape(RoundedRectangle(cornerRadius: 28)).background(RoundedRectangle(cornerRadius: 28).fill(.background))`. This follows Apple's order: padding, then containerShape, then background.
+- **Evidence:** https://developer.apple.com/documentation/swiftui/view/containershape(_:)
+- **Notes:** Primary sources (apple-doc JSON, fetched 2026-10-08):
+- view/containershape(_:).json: the declaration and all seven 26.0 availabilities match the finding verbatim. The abstract reads 'Sets the container shape to use for any container relative shape or concentric rectangle within this view.' An older overload, containershape(_:)-qn9q, is declared `containerShape<T>(_ shape: T) -> some View where T : InsettableShape`.
+- concentricrectangle.json: the quote is verbatim. It also says 'A containing shape could be a view that extends to the device's rounded corners, or any view that sets containerShape(_:)', and that corners far from the container's corners may resolve to radius zero ('the corner is square').
+- shape/rect(cornerradius:style:).json: the cornerRadius parameter is CGFloat.
+- roundedrectangularshape.json: conforming types are Capsule, Circle, Rectangle, RoundedRectangle and UnevenRoundedRectangle.
+
+Why it matters: even spelled correctly, the skill's 'Right' block would most likely resolve against the window or device rather than the 28pt card, so the corners would come out square.
+
+iOS 27 (apple-doc): `GeometryProxy.concentricCornerRadii` (`var concentricCornerRadii: RectangleCornerRadii? { get }`, 27.0+ on all platforms) returns nil 'if no container shape is set'. Its doc example uses `.containerShape(.rect(cornerRadius: 48))`.
+
+Side note, outside this finding: SwiftUI documents the default `.padding()` only as 'platform-specific'. If it is 16pt, the 'Wrong' example's 12pt radius inside a 28pt card is already concentric (28 - 16 = 12), which weakens the anti-pattern's premise.
+
+## Finding 7 — **PARTIALLY**
+
+> Concentricity section code `.glassEffect(.regular, in: .rect(cornerRadius: .containerConcentric))`; also lines 20, 27, 154 tell users to use `.containerConcentric`.
+
+- **Established truth:** The skill is wrong at 02-hig-principles.md lines 20, 27, 82 and 154 (all verified), and the proposed fix is right. SwiftUI has no `containerConcentric`: Shape has no such member, Edge.Corner.Style has only `concentric`, `concentric(minimum:)` and `fixed(_:)`, and `.rect(cornerRadius:)` takes a CGFloat. Use `ConcentricRectangle` / `.rect(corners: .concentric, isUniform:)`. The declaration `init(corners: Edge.Corner.Style, isUniform: Bool = false)` is verbatim, available 26.0+ on iOS, iPadOS, Mac Catalyst, macOS, tvOS, visionOS and watchOS. For line 27's shape list, the equivalent is `ConcentricRectangle()` or `.rect(corners: .concentric)`.
+
+What's overstated: the universal claim 'No `containerConcentric` symbol exists' is false. UIKit ships `static func containerConcentric(minimum: CGFloat? = nil) -> UICornerRadius` (iOS, iPadOS, Mac Catalyst, tvOS and visionOS 26.0+) for `UIView.cornerConfiguration`, and it cannot be used in SwiftUI shapes. Also, a parent `.containerShape(_:)` is needed only for custom containers: per the docs, 'SwiftUI provides container shapes by default in system-provided views', and views that reach the device's rounded corners also act as containers.
+- **Evidence:** https://developer.apple.com/documentation/swiftui/concentricrectangle/init(corners:isuniform:)
+- **Notes:** Why only 'partially': the skill error and the fix are fully confirmed. Only the statement that no symbol with this name exists anywhere fails.
+
+UIKit counterexample (apple-doc): https://developer.apple.com/documentation/uikit/uicornerradius-swift.struct/containerconcentric(minimum:). Its abstract reads 'A dynamic corner radius calculated using the geometry of the view and its container limited to a minimum radius.'
+
+Where the bad spelling came from (apple-video): the WWDC25 session 323 page still shows, at 17:27, `.background(.tint, in: .rect(corner: .containerConcentric))`, with the transcript line 'Pass the containerConcentric configuration to the corner parameter of a rectangle'.
+
+Apple Developer Forums (secondary):
+- Thread 787615: a Frameworks Engineer says 'These APIs aren't available in the first beta release.'
+- Thread 792636: a DTS Engineer says 'It should be `.background(.tint, in: .rect(corners: .concentric))`. Please test on Xcode 26 Beta 4.'
+
+The skill's `cornerRadius:` form matches neither the beta spelling nor the shipping one. The SwiftUI updates page (all ~381k characters, including the September 2026 and June 2026 iOS 27 sections) never mentions containerConcentric.
+
+## Finding 8 — **CONFIRMED**
+
+> Corner-radii table: 'Card inside a sheet | `.containerConcentric` | `.rect(cornerRadius: .containerConcentric)`'; line 18 rule 'prefer `.containerConcentric`'; line 152 'Concentric corner trick | `.rect(cornerRadius: .containerConcentric)`'.
+
+- **Established truth:** The skill is wrong at 03-design-tokens.md lines 13, 18 and 152 (verified). `.rect(cornerRadius: .containerConcentric)` does not compile because cornerRadius is a CGFloat.
+
+Edge.Corner.Style is `struct Style`, available 26.0+ on iOS, iPadOS, Mac Catalyst, macOS, tvOS, visionOS and watchOS. Its members are exactly:
+- `static var concentric: Edge.Corner.Style`
+- `static func concentric(minimum: Edge.Corner.Style?) -> Edge.Corner.Style`
+- `static func fixed(CGFloat) -> Edge.Corner.Style`
+
+It also conforms to ExpressibleByFloatLiteral and ExpressibleByIntegerLiteral, so `.concentric(minimum: 12)` is valid; Apple's own example uses `.concentric(minimum: 12.0)`. The proposed replacements, `.rect(corners: .concentric, isUniform: true)` and `ConcentricRectangle(corners: .concentric(minimum: 12), isUniform: true)`, are valid.
+
+For the table: a card inside a system sheet can rely on the system-provided container shape. The line 18 rule ('inside any rounded container') must add that a custom rounded container needs `.containerShape(_:)`, or the concentric corners resolve against a distant container and come out square.
+- **Evidence:** https://developer.apple.com/documentation/swiftui/edge/corner/style
+- **Notes:** Primary sources (apple-doc JSON): edge/corner/style.json for the member declarations, quoted verbatim, and the conformances. The page has no containerConcentric member and no deprecated members. concentricrectangle.json says 'SwiftUI provides container shapes by default in system-provided views' and that sheets and popovers are concentric automatically. shape/rect(corners:isuniform:).json documents isUniform: true as 'it selects the largest radius and applies it to each corner'. As of the iOS 27-era docs, none of these symbols is deprecated.
+
+## Finding 9 — **CONFIRMED**
+
+> Golden rule 4: 'Use `.containerConcentric` corners for nested glass shapes'.
+
+- **Established truth:** The skill is wrong at SKILL.md:87 (verified). SwiftUI has no `containerConcentric`. The concentric API is `ConcentricRectangle` / `Shape.rect(corners:isUniform:)`, declared verbatim as `@export(implementation) static func rect(corners: Edge.Corner.Style, isUniform: Bool = false) -> Self`. It is available 26.0+ on iOS, iPadOS, Mac Catalyst, macOS, tvOS, visionOS and watchOS, not beta, and not deprecated in the current (iOS 27-era) docs. It resolves against one of three things: a container shape that system-provided views supply, a view that extends to the device's rounded corners, or a shape set with `containerShape(_:)`. A fixed golden rule 4 could read: 'Use ConcentricRectangle / `.rect(corners: .concentric(minimum:), isUniform:)` for nested glass shapes; give custom rounded parents a `.containerShape(_:)`.'
+- **Evidence:** https://developer.apple.com/documentation/swiftui/shape/rect(corners:isuniform:)
+- **Notes:** The `@export(implementation)` attribute really is how Apple's docs render it now; it also appears on rect(cornerRadius:style:). No `where Self ==` constraint is shown on the page.
+
+For precise wording: say 'SwiftUI has no containerConcentric', not 'no such symbol exists', because UIKit has `UICornerRadius.containerConcentric(minimum: CGFloat? = nil)` (iOS 26.0+, apple-doc), which is not usable for SwiftUI shapes.
+
+The Shape topics list has 13 `rect` members and none is named containerConcentric.
+
+New in iOS 27 and worth adding to the skill: `GeometryProxy.concentricCornerRadii`, declared `var concentricCornerRadii: RectangleCornerRadii? { get }`, 27.0+ on all platforms (apple-doc).
+
+## Finding 10 — **CONFIRMED**
+
+> 'If the chip wraps to two lines, switch to `.rect(cornerRadius: .containerConcentric)`.'
+
+- **Established truth:** The skill is wrong at glass-card-stack.md:92 (verified): `.rect(cornerRadius: .containerConcentric)` does not compile because the parameter is a CGFloat. Both proposed replacements are valid:
+- `.rect(corners: .concentric(minimum: 8), isUniform: true)`, iOS 26.0+
+- `.rect(cornerRadius: 12)`, CGFloat, iOS 13.0+ / macOS 10.15+
+
+The card applies `.clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))`, and the docs don't list clipShape as a container-shape source; they name `containerShape(_:)` and system-provided views. Without a container shape, the concentric chip would resolve against a distant container such as the window or device, giving radius 0 or just the minimum. Adding `.containerShape(RoundedRectangle(cornerRadius: 24, style: .continuous))` to the card is a valid fix, since RoundedRectangle conforms to RoundedRectangularShape. With the chip inset 12pt from the card's top-leading corner, that corner would resolve to about 12pt, and isUniform: true applies the largest radius to all four corners.
+
+The same line's premise is correct: `glassEffect(_ glass: Glass = .regular, in shape: some Shape = DefaultGlassEffectShape())` defaults to a capsule ('SwiftUI uses the regular variant by default along with a Capsule shape').
+- **Evidence:** https://developer.apple.com/documentation/swiftui/concentricrectangle
+- **Notes:** Primary sources (apple-doc JSON): concentricrectangle.json, edge/corner/style.json, shape/rect(cornerradius:style:).json, roundedrectangularshape.json, view/glasseffect(_:in:).json and view/containershape(_:).json.
+
+That clipShape doesn't set a container shape is inferred from the docs' list of sources. No page states it explicitly, but Apple's containerShape example has to add `.containerShape(shape)` even though it already applies the same shape as a background.
+
+Secondary (Apple Developer Forums thread 792636): a developer reports that `.rect(corners: .concentric)` works only near the screen edges when no container shape is set, which is consistent with the docs.
+
+## Finding 11 — **CONFIRMED**
+
+> 'Inner glass shapes inside rounded containers use `.containerConcentric` radii'.
+
+- **Established truth:** The skill is wrong at pre-ship-checklist.md:26 (verified). SwiftUI has no `.containerConcentric` radius. Concentric corners come from `ConcentricRectangle` or `.rect(corners: .concentric…)`.
+
+`ConcentricRectangle` is declared `struct ConcentricRectangle`, available 26.0+ on iOS, iPadOS, Mac Catalyst, macOS, tvOS, visionOS and watchOS. It conforms to Shape, View, Animatable and Sendable.
+
+The corners resolve against a container shape: one supplied by a system-provided view, the device's rounded corners, or one set with `containerShape(_:)`. A corrected checklist item: 'Inner glass shapes inside custom rounded containers use ConcentricRectangle / .rect(corners: .concentric(minimum:)), and the container declares .containerShape(_:).'
+- **Evidence:** https://developer.apple.com/documentation/swiftui/concentricrectangle
+- **Notes:** The declaration and availability are verbatim from concentricrectangle.json (apple-doc). Its topics are init() and init(corners:isUniform:), plus per-corner and uniform-corner initializers, each mirrored by a `Shape.rect(...)` static.
+
+Wording note: say 'SwiftUI has no containerConcentric' (UIKit does have `UICornerRadius.containerConcentric(minimum:)`).
+
+Outside findings 6-11: `.containerConcentric` also appears in references/01-api-reference.md at lines 466, 473 and 475, and no examples/*.swift file uses it.
+
