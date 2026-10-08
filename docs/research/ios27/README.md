@@ -15,5 +15,6 @@ Findings marked by an agent are claims until a `verify:` file confirms them.
 | [design-platform](design-platform.md) | Research | done — 35 findings, 15 symbols |
 | [skill-authoring](skill-authoring.md) | Research | done — 28 findings, 8 symbols |
 | [audit-references](audit-references.md) | Audit | done — 43 findings, 8 symbols |
-| audit-code | Audit | running |
+| [audit-code](audit-code.md) | Audit | done — 46 findings, 40 symbols |
 | verify:truth-glass-core#1 | Verify | running |
+| verify:truth-glass-core#2 | Verify | running |
