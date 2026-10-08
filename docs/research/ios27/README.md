@@ -14,5 +14,6 @@ Findings marked by an agent are claims until a `verify:` file confirms them.
 | [truth-chrome](truth-chrome.md) | Research | done — 28 findings, 41 symbols |
 | [design-platform](design-platform.md) | Research | done — 35 findings, 15 symbols |
 | [skill-authoring](skill-authoring.md) | Research | done — 28 findings, 8 symbols |
-| audit-references | Audit | running |
+| [audit-references](audit-references.md) | Audit | done — 43 findings, 8 symbols |
 | audit-code | Audit | running |
+| verify:truth-glass-core#1 | Verify | running |
