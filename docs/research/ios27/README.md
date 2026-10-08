@@ -18,5 +18,6 @@ Findings marked by an agent are claims until a `verify:` file confirms them.
 | [audit-code](audit-code.md) | Audit | done — 46 findings, 40 symbols |
 | [verify:truth-glass-core#1](verify-truth-glass-core-1.md) | Verify | done — 6 confirmed |
 | [verify:truth-glass-core#2](verify-truth-glass-core-2.md) | Verify | done — 5 confirmed, 1 partially |
-| verify:truth-glass-core#3 | Verify | running |
+| [verify:truth-glass-core#3](verify-truth-glass-core-3.md) | Verify | done — 6 confirmed |
 | verify:truth-glass-core#4 | Verify | running |
+| verify:truth-glass-core#5 | Verify | running |
