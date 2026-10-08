@@ -21,5 +21,7 @@ Findings marked by an agent are claims until a `verify:` file confirms them.
 | [verify:truth-glass-core#3](verify-truth-glass-core-3.md) | Verify | done — 6 confirmed |
 | [verify:truth-glass-core#4](verify-truth-glass-core-4.md) | Verify | done — 3 confirmed, 3 partially |
 | [verify:truth-glass-core#5](verify-truth-glass-core-5.md) | Verify | done — 6 confirmed |
-| verify:truth-glass-core#6 | Verify | running |
-| verify:swiftui-updates#1 | Verify | running |
+| [verify:truth-glass-core#6](verify-truth-glass-core-6.md) | Verify | done — 3 confirmed, 1 partially |
+| [verify:swiftui-updates#1](verify-swiftui-updates-1.md) | Verify | done — 5 confirmed, 1 partially |
+| verify:swiftui-updates#2 | Verify | running |
+| verify:swiftui-updates#3 | Verify | running |
