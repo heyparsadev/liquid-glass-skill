@@ -1,0 +1,1595 @@
+{
+  "summary": "I read Apple's SwiftUI Updates page (documentation/updates/swiftui.json) in full for its September 2026 and June 2026 sections. It has no point-release sections: no December 2025 or March 2026 headings, and the next section is June 2025. I then fetched about 100 symbol pages as DocC JSON, plus the iOS 26.1, 26.2, 26.4 and 27 release notes, the WWDC26 \"What's new in SwiftUI\" session (269), and the HIG pages for Materials, Toolbars, Tab bars and \"Designing for iPhone Duo\". The skill folder was only read; nothing in the repo was changed.\n\nKEY RESULTS\n1) Release structure. \"June 2026\" is iOS 27.0. Its General section covers the @State macro, ContentBuilder, reorderable/reorderContainer, swipeActions on any container and swipeActionsContainer. The other sections are Transitions (NavigationTransition.crossFade for sheets), Images, Toolbars (visibilityPriority, ToolbarOverflowMenu, .topBarPinnedTrailing, toolbarMinimizationBehavior(_:for:)), Documents, Tab bars (TabRole.prominent), Alerts/confirmation dialogs (item- and error-driven) and Gestures. \"September 2026\" is iOS/iPadOS 27.1 and every symbol in it is still marked BETA. It covers Arrangement views, Reserved regions, Hinge, Scene accessories (CameraCaptureAccessory) and \"Controls on the vertical axis\" (toolbarVerticalEdge, toolbarVerticalBehavior, axisBehavior, toolbarVerticalCompressionBehavior). All of these serve the new iPhone Duo, which has its own new HIG page.\n2) Shipping 27.0 APIs that the Updates page leaves out but symbol pages or release notes confirm:\n   - ToolbarContent.contentMarginsRemoved(_:)\n   - View.toolbarOverflowMenu(content:)\n   - toolbarMinimizationRestoration(_:for:) and ToolbarMinimizationRestoration\n   - toolbarMinimizationSafeAreaAdjustment(_:for:) and ToolbarMinimizationSafeAreaAdjustment\n   - presentationPlacement(_:) and PresentationPlacement\n   - ToolbarPlacement.statusBar\n   - TabsPickerStyle / .tabs\n   - textInputBorderShape(_:), TextInputBorderShape and TextFieldStyle.bordered (.roundedBorder and .squareBorder have deprecatedAt 27.2)\n   - GeometryProxy.concentricCornerRadii and concentricCornerRadii(in:)\n   - View.sceneAccessory(content:) and ExternalNonInteractiveAccessory\n3) Rename. WWDC26 session 269 shows `.toolbarMinimizeBehavior(.onScrollDown, for: .navigationBar)`. The shipping docs have only toolbarMinimizationBehavior(_:for:), and the old path returns 404. The iOS 27 release notes say: \"This modifier replaces toolbarMinimizeBehavior.\"\n4) Existing glass symbols. Glass, glassEffect(_:in:), GlassEffectContainer, glassEffectID, glassEffectUnion, glassEffectTransition, GlassEffectTransition, GlassProminentButtonStyle and DefaultGlassEffectShape gained no new members in 26.x or 27; all are still 26.0. The only glass addition is GlassButtonStyle.init(_ glass: Glass), introduced in 26.1. PrimitiveButtonStyle.glass(_:) is documented as 26.0. None of the Glass APIs list visionOS. Every declaration printed as @ContentBuilder is a typealias of ViewBuilder, so existing @ViewBuilder code still compiles.\n5) 26.x point releases. Symbol-level 26.1 additions are GlassButtonStyle.init(_:), tabViewBottomAccessory(isEnabled:content:) (iOS/iPadOS/Catalyst only), and visibilityPriority / ToolbarItemVisibilityPriority on macOS 26.1. The 26.1 notes say @Animatable now back-deploys to iOS 13, fix \"Buttons that do not specify an explicit label display text instead of a symbol in toolbars\", and list a known issue: \"@FocusState doesn't work in safeAreaBar\". The 26.2 notes have no SwiftUI items. The 26.4 notes have no chrome-related SwiftUI items.\n6) Behavior changes when building with the 27 SDK:\n   - The refreshed Liquid Glass look applies automatically. iOS 27 adds a user Liquid Glass tint slider, iPad dims inactive windows, and interactive() glass now works with the macOS pointer (all three from WWDC26 269).\n   - Navigation bars auto-minimize when searchable uses .toolbarPrincipal (ToolbarMinimizationBehavior.automatic).\n   - controlSize, buttonSizing, buttonRepeatBehavior, menuIndicatorVisibility and ButtonBorderShape environment values are reset inside sheets and popovers.\n   - TabView may crash if its selection points to a hidden tab.\n   - Menu-bar item symbol images are hidden by default on iPadOS/macOS 27.\n   - @State is now a macro. It initializes its default value once, back-deploys to iOS 17-aligned OSes, and has a few source-compatibility breaks.\n7) Existing-skill errors confirmed against the docs while checking the glass and chrome symbols:\n   - glassEffect has no isEnabled parameter (the path returns 404).\n   - glassEffectTransition has no isEnabled parameter.\n   - GlassEffectTransition is a struct, not an enum.\n   - `.containerConcentric` does not exist; the real APIs are ConcentricRectangle and Edge.Corner.Style.concentric.\n   - `.scrollExtensionMode` does not exist (404).\n   - sharedBackgroundVisibility is a ToolbarContent modifier only; a View variant returns 404.\n   - DefaultToolbarItem is ToolbarContent and cannot sit inside ToolbarItem, whose Content must be a View.\n   - TabViewBottomAccessoryPlacement cases are .expanded and .inline (not .collapsed), and the environment value is Optional.\n   - TabBarMinimizeBehavior also has .onScrollUp, and minimizing is iPhone-only.\n   - The HIG Materials page tells you to use standard materials in the content layer, which contradicts the skill's \"never use Material\" rule.\n8) Not found in the docs: any SwiftUI API that reads the user's Liquid Glass tint/clear preference, and any new Glass variants or tint APIs in 27.\n9) Skipped as unrelated, mentioned only here:\n   - Documents: ReadableDocument, WritableDocument, Document, DocumentReader/Writer, FileWrapperDocumentReader/Writer, URLDocumentConfiguration, fileExporter overloads; FileDocument is deprecated.\n   - Gestures: GestureInputKinds initializers on DragGesture, LongPressGesture, MagnifyGesture, RotateGesture, RotateGesture3D, SpatialEventGesture, SpatialTapGesture, TapGesture, WindowDragGesture.\n   - Images: AsyncImage caching (asyncImageURLSession(_:), init(request:scale:...)).\n   - Text: selectable Text gets the system selection UI and supports TextRenderer.\n   - LabeledContent inside Menu maps to the menu item subtitle; @Entry gains new warnings.\n   Secondary sources (exploreswiftui.com, blakecrosley.com, appcircle, techtimes) were used only as leads; two of them did not resolve.",
+  "findings": [
+    {
+      "file": "references/01-api-reference.md",
+      "line": 298,
+      "claim": "Toolbar integration section (iOS 26) has no API to minimize the navigation bar on scroll; only tabBarMinimizeBehavior is taught.",
+      "kind": "new-api-ios27",
+      "correct_info": "iOS 27 adds View.toolbarMinimizationBehavior(_:for:) with ToolbarMinimizationBehavior members .automatic, .never, .onScrollDown, .onScrollUp. Docs: 'Use this modifier to enable toolbar minimization in response to scrolling. The supported placement is navigationBar. When the navigation bar minimizes, an integrated top tab bar will also minimize.' The WWDC26 session 269 code uses `.toolbarMinimizeBehavior(.onScrollDown, for: .navigationBar)`, but that symbol is not in the shipping docs (404). The iOS 27 release notes (177954148) say: 'You can use toolbarMinimizationBehavior to control bar minimization behavior. This modifier replaces toolbarMinimizeBehavior.'",
+      "declaration": "nonisolated func toolbarMinimizationBehavior(_ behavior: ToolbarMinimizationBehavior, for bars: ToolbarPlacement...) -> some View",
+      "availability": "iOS 27.0, iPadOS 27.0, Mac Catalyst 27.0, macOS 27.0, tvOS 27.0, visionOS 27.0, watchOS 27.0",
+      "evidence_url": "https://developer.apple.com/documentation/swiftui/view/toolbarminimizationbehavior(_:for:)",
+      "source_type": "apple-doc",
+      "confidence": "high",
+      "action": "Add an 'iOS 27: minimizing the navigation bar' subsection: `.toolbarMinimizationBehavior(.onScrollDown, for: .navigationBar)` on the scroll content inside a NavigationStack, gated with `if #available(iOS 27, *)` when the deployment target is 26. Explicitly warn that the WWDC26 spelling `toolbarMinimizeBehavior` does not compile. Pair it with tabBarMinimizeBehavior in the decision tree."
+    },
+    {
+      "file": "references/01-api-reference.md",
+      "line": 298,
+      "claim": "Skill has no control over when a minimized bar restores.",
+      "kind": "new-api-ios27",
+      "correct_info": "View.toolbarMinimizationRestoration(_:for:) with ToolbarMinimizationRestoration members .atScrollEdge and .automatic. 'By default, the bar restores when the user reverses scroll direction. Use atScrollEdge to restrict restoration to when the scroll view's content reaches the scroll edge... Currently, only navigationBar supports customizing the restoration behavior, and only when used in combination with onScrollDown.'",
+      "declaration": "nonisolated func toolbarMinimizationRestoration(_ restoration: ToolbarMinimizationRestoration, for bars: ToolbarPlacement...) -> some View",
+      "availability": "iOS 27.0, iPadOS 27.0, Mac Catalyst 27.0, macOS 27.0, tvOS 27.0, visionOS 27.0, watchOS 27.0",
+      "evidence_url": "https://developer.apple.com/documentation/swiftui/view/toolbarminimizationrestoration(_:for:)",
+      "source_type": "apple-doc",
+      "confidence": "high",
+      "action": "Document this next to toolbarMinimizationBehavior, noting the constraint (navigationBar + .onScrollDown only). Use case: screens whose bar is mostly chrome."
+    },
+    {
+      "file": "examples/04-PhotoDetailScreen.swift",
+      "line": 0,
+      "claim": "Full-bleed media examples have no way to stop content reflowing when the nav bar minimizes.",
+      "kind": "new-api-ios27",
+      "correct_info": "View.toolbarMinimizationSafeAreaAdjustment(_:for:) with ToolbarMinimizationSafeAreaAdjustment members .automatic, .disabled ('The safe area remains unchanged as bars minimize.') and .enabled ('The safe area adjusts interactively as bars minimize.'). 'Use this modifier to disable that adjustment when content should remain in place – for example, when displaying full-bleed media beneath a minimizing bar. Currently, only navigationBar supports customizing the safe area adjustment.'",
+      "declaration": "nonisolated func toolbarMinimizationSafeAreaAdjustment(_ adjustment: ToolbarMinimizationSafeAreaAdjustment, for bars: ToolbarPlacement...) -> some View",
+      "availability": "iOS 27.0, iPadOS 27.0, Mac Catalyst 27.0, macOS 27.0, tvOS 27.0, visionOS 27.0, watchOS 27.0",
+      "evidence_url": "https://developer.apple.com/documentation/swiftui/view/toolbarminimizationsafeareaadjustment(_:for:)",
+      "source_type": "apple-doc",
+      "confidence": "high",
+      "action": "In the API reference and the photo/music examples, show `.toolbarMinimizationBehavior(.onScrollDown, for: .navigationBar).toolbarMinimizationSafeAreaAdjustment(.disabled, for: .navigationBar)` for media under glass chrome."
+    },
+    {
+      "file": "references/01-api-reference.md",
+      "line": 317,
+      "claim": "Skill only teaches ToolbarSpacer/ToolbarItemGroup for arranging glass toolbar items and gives no way to control which items survive when space shrinks.",
+      "kind": "new-api-ios27",
+      "correct_info": "ToolbarContent.visibilityPriority(_:) with ToolbarItemVisibilityPriority (.automatic, .low, .high, init(lowerThan:), init(higherThan:)). 'When toolbar space is limited, items with a lower priority move into the overflow menu before items with a higher priority. The default is automatic.' WWDC26 sample: `ToolbarItemGroup { UndoButton(); RedoButton() }.visibilityPriority(.high)`.",
+      "declaration": "@MainActor @preconcurrency func visibilityPriority(_ priority: ToolbarItemVisibilityPriority) -> some ToolbarContent",
+      "availability": "iOS 27.0, iPadOS 27.0, Mac Catalyst 27.0, macOS 26.1, tvOS 27.0, visionOS 27.0, watchOS 27.0",
+      "evidence_url": "https://developer.apple.com/documentation/swiftui/toolbarcontent/visibilitypriority(_:)",
+      "source_type": "apple-doc",
+      "confidence": "high",
+      "action": "Add a 'Controlling item visibility (iOS 27)' subsection. Apply it to ToolbarItem/ToolbarItemGroup, not to the inner Button, because it is a ToolbarContent modifier. Teach .high for key actions such as Undo/Redo/Compose and badged items (per the HIG iPhone Duo page)."
+    },
+    {
+      "file": "references/01-api-reference.md",
+      "line": 317,
+      "claim": "Skill has no way to send secondary toolbar actions to the system overflow (ellipsis) menu.",
+      "kind": "new-api-ios27",
+      "correct_info": "ToolbarOverflowMenu (ToolbarContent container) and View.toolbarOverflowMenu(content:). 'An overflow menu represents actions that are always placed in the toolbar's overflow menu, regardless of the toolbar mode, platform, or customizability. In iOS and visionOS, this content is placed into the overflow menu in the navigation bar.' Not available on macOS, tvOS or watchOS. HIG (iPhone Duo): 'Use the system overflow menu. If your app has its own overflow menu, move those actions into the system menu... Reserve the ellipsis symbol for overflow.'",
+      "declaration": "nonisolated struct ToolbarOverflowMenu<Content> where Content : View  |  init(content: () -> Content)  |  nonisolated func toolbarOverflowMenu<C>(@ContentBuilder content: () -> C) -> some View where C : View",
+      "availability": "iOS 27.0, iPadOS 27.0, Mac Catalyst 27.0, visionOS 27.0",
+      "evidence_url": "https://developer.apple.com/documentation/swiftui/toolbaroverflowmenu",
+      "source_type": "apple-doc",
+      "confidence": "high",
+      "action": "Teach `.toolbar { ToolbarOverflowMenu { Button(\"Archive\", systemImage: \"archivebox\") {} } }`. Add an anti-pattern: don't build a custom glass ellipsis Menu in the nav bar on iOS 27; use ToolbarOverflowMenu instead. Note that it is unavailable on macOS."
+    },
+    {
+      "file": "patterns/glass-navigation-bar.md",
+      "line": 22,
+      "claim": "Pattern places the primary/share action with .topBarTrailing, which can move into overflow when space is tight.",
+      "kind": "new-api-ios27",
+      "correct_info": "ToolbarItemPlacement.topBarPinnedTrailing: 'A placement that pins the item to the trailing edge of the toolbar. Pinned items only move to the overflow menu when search is active and there isn't enough room. On iOS and visionOS, the top bar is the navigation bar.'",
+      "declaration": "static let topBarPinnedTrailing: ToolbarItemPlacement",
+      "availability": "iOS 27.0, iPadOS 27.0, Mac Catalyst 27.0, visionOS 27.0",
+      "evidence_url": "https://developer.apple.com/documentation/swiftui/toolbaritemplacement/topbarpinnedtrailing",
+      "source_type": "apple-doc",
+      "confidence": "high",
+      "action": "In the nav-bar pattern and the API reference, show `ToolbarItem(placement: .topBarPinnedTrailing) { ShareButton() }` for the one action that must never overflow, with an availability gate. Keep .topBarTrailing for iOS 26."
+    },
+    {
+      "file": "references/01-api-reference.md",
+      "line": 298,
+      "claim": "Skill doesn't cover removing the default padding around a toolbar item's content.",
+      "kind": "new-api-ios27",
+      "correct_info": "ToolbarContent.contentMarginsRemoved(_:): 'Use this modifier to remove the default padding around a toolbar item's content. This is useful for content that goes to the edge of the item.' This is not listed on the SwiftUI Updates page but is documented as 27.0.",
+      "declaration": "nonisolated func contentMarginsRemoved(_ removed: Bool = true) -> some ToolbarContent",
+      "availability": "iOS 27.0, iPadOS 27.0, Mac Catalyst 27.0, macOS 27.0, tvOS 27.0, visionOS 27.0, watchOS 27.0",
+      "evidence_url": "https://developer.apple.com/documentation/swiftui/toolbarcontent/contentmarginsremoved(_:)",
+      "source_type": "apple-doc",
+      "confidence": "high",
+      "action": "Mention it as the supported way to make edge-to-edge custom toolbar content (avatars, progress rings) inside the glass item, instead of negative padding hacks."
+    },
+    {
+      "file": "patterns/glass-tab-bar.md",
+      "line": 20,
+      "claim": "Tab bar pattern only knows role: .search for the separated trailing tab.",
+      "kind": "new-api-ios27",
+      "correct_info": "TabRole.prominent: 'A tab role that provides prominent visual treatment to one of the tabs in supported tab bars. Only one tab can receive the prominent treatment. When there are no tabs with an explicit .prominent role, then a .search role tab may receive the prominent visual treatment by default.' Updates page: 'Set the prominent role on a tab to place the tab in a separate, trailing position of the tab bar.' WWDC26: `Tab(role: .prominent) { CartTab() }`.",
+      "declaration": "static var prominent: TabRole { get }",
+      "availability": "iOS 27.0, iPadOS 27.0, Mac Catalyst 27.0, macOS 27.0, tvOS 27.0, visionOS 27.0, watchOS 27.0",
+      "evidence_url": "https://developer.apple.com/documentation/swiftui/tabrole/prominent",
+      "source_type": "apple-doc",
+      "confidence": "high",
+      "action": "Add a 'Prominent tab (iOS 27)' variation, e.g. Cart/Create. State the rules: only one prominent tab, and .search gets the treatment when no explicit .prominent exists. Update the anti-patterns so that no custom floating glass FAB imitates a separated tab."
+    },
+    {
+      "file": "patterns/glass-modal-sheet.md",
+      "line": 64,
+      "claim": "Sheet transitions taught are only the default slide-up and the .zoom morph.",
+      "kind": "new-api-ios27",
+      "correct_info": "NavigationTransition.crossFade / CrossFadeNavigationTransition: 'A navigation transition that cross-fades between the appearing view and the disappearing view. Specify this transition in a sheet to have it appear by fading in over the content, as opposed to moving upwards to cover content.' Example: `.sheet(isPresented: $showSheet) { Text(\"Sheet Content\").presentationDetents([.medium]).navigationTransition(.crossFade) }`. Not available on macOS.",
+      "declaration": "static var crossFade: CrossFadeNavigationTransition { get }",
+      "availability": "iOS 27.0, iPadOS 27.0, Mac Catalyst 27.0, tvOS 27.0, visionOS 27.0, watchOS 27.0",
+      "evidence_url": "https://developer.apple.com/documentation/swiftui/navigationtransition/crossfade",
+      "source_type": "apple-doc",
+      "confidence": "high",
+      "action": "Add a crossFade variation for glass sheets that should materialize in place (e.g. over a map or photo). Note that it applies inside the sheet content and is absent on macOS."
+    },
+    {
+      "file": "patterns/glass-modal-sheet.md",
+      "line": 80,
+      "claim": "Sheet patterns can't move a sheet to the leading or trailing edge to keep content (e.g. a map) visible.",
+      "kind": "new-api-ios27",
+      "correct_info": "View.presentationPlacement(_:) with PresentationPlacement members .automatic, .center, .leading, .trailing. 'By default, a presentation uses automatic placement. Use this modifier to place it on the leading or trailing edge... Only sheet presentations respect this placement.' This is not listed on the SwiftUI Updates page.",
+      "declaration": "nonisolated func presentationPlacement(_ placement: PresentationPlacement) -> some View",
+      "availability": "iOS 27.0, iPadOS 27.0, Mac Catalyst 27.0, macOS 27.0, tvOS 27.0, visionOS 27.0, watchOS 27.0",
+      "evidence_url": "https://developer.apple.com/documentation/swiftui/view/presentationplacement(_:)",
+      "source_type": "apple-doc",
+      "confidence": "high",
+      "action": "Add the variation `Map().sheet(isPresented:) { PlaceDetailView().presentationDetents([.medium, .large]).presentationPlacement(.leading) }`, gated to iOS 27."
+    },
+    {
+      "file": "references/01-api-reference.md",
+      "line": 379,
+      "claim": "Skill shows only `.tabViewBottomAccessory { … }`, with no way to hide or show it dynamically.",
+      "kind": "new-api-ios26x",
+      "correct_info": "tabViewBottomAccessory(isEnabled:content:) was added in 26.1: 'Places a view as the bottom accessory of the tab view. Use this modifier to dynamically show and hide the accessory view.' isEnabled: 'If true, the bottom accessory is shown; otherwise, the bottom accessory is hidden.' Both overloads now print `@ContentBuilder content`.",
+      "declaration": "nonisolated func tabViewBottomAccessory<Content>(isEnabled: Bool, @ContentBuilder content: () -> Content) -> some View where Content : View",
+      "availability": "iOS 26.1, iPadOS 26.1, Mac Catalyst 26.1",
+      "evidence_url": "https://developer.apple.com/documentation/swiftui/view/tabviewbottomaccessory(isenabled:content:)",
+      "source_type": "apple-doc",
+      "confidence": "high",
+      "action": "Teach `.tabViewBottomAccessory(isEnabled: hasNowPlaying) { … }` (iOS 26.1+) instead of conditionally emptying the accessory content. Note that it exists only on iOS, iPadOS and Mac Catalyst."
+    },
+    {
+      "file": "references/01-api-reference.md",
+      "line": 396,
+      "claim": "`@Environment(\\.tabViewBottomAccessoryPlacement) var placement // .expanded | .collapsed`",
+      "kind": "factually-wrong",
+      "correct_info": "TabViewBottomAccessoryPlacement is an enum with cases `expanded` ('The bar is expanded on top of the bottom tab bar...') and `inline` ('The view is displayed in line with the bottom tab bar.'). There is no `.collapsed`. The environment value is Optional: `var tabViewBottomAccessoryPlacement: TabViewBottomAccessoryPlacement? { get }`, where 'A nil value corresponds to an undefined placement.'",
+      "declaration": "enum TabViewBottomAccessoryPlacement { case expanded; case inline }",
+      "availability": "iOS 26.0, iPadOS 26.0, Mac Catalyst 26.0, macOS 26.0, tvOS 26.0, visionOS 26.0, watchOS 26.0",
+      "evidence_url": "https://developer.apple.com/documentation/swiftui/tabviewbottomaccessoryplacement",
+      "source_type": "apple-doc",
+      "confidence": "high",
+      "action": "Replace the comment with `.expanded | .inline (Optional — handle nil)` and fix any switch over the placement to handle nil/default."
+    },
+    {
+      "file": "references/01-api-reference.md",
+      "line": 256,
+      "claim": "Button styles section offers only `.buttonStyle(.glass)` and `.buttonStyle(.glassProminent)`; a configurable glass button requires .glassEffect on a Button.",
+      "kind": "new-api-ios26x",
+      "correct_info": "PrimitiveButtonStyle.glass(_:) ('A button style that applies a configurable Liquid Glass effect based on the button's context.') is documented with 26.0 availability, e.g. `Button(\"Button\") {}.buttonStyle(.glass(.clear))`. GlassButtonStyle also gained `init(_ glass: Glass)`, documented as introduced in 26.1. 'In tvOS, this button style applies a Liquid Glass effect regardless of whether the button has focus.'",
+      "declaration": "nonisolated static func glass(_ glass: Glass) -> Self   |   nonisolated init(_ glass: Glass)  (GlassButtonStyle)",
+      "availability": "glass(_:): iOS 26.0, iPadOS 26.0, Mac Catalyst 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0; GlassButtonStyle.init(_:): iOS 26.1, iPadOS 26.1, Mac Catalyst 26.1, macOS 26.1, tvOS 26.1, watchOS 26.1",
+      "evidence_url": "https://developer.apple.com/documentation/swiftui/primitivebuttonstyle/glass(_:)",
+      "source_type": "apple-doc",
+      "confidence": "high",
+      "action": "Add `.buttonStyle(.glass(.clear))` and `.buttonStyle(.glass(.regular.tint(.orange)))` as the preferred way to get clear or tinted glass buttons over media. Add an anti-pattern against `.glassEffect(.clear)` on a Button with a plain style. Flag the 26.0 (static func) vs 26.1 (init) documentation discrepancy."
+    },
+    {
+      "file": "references/01-api-reference.md",
+      "line": 61,
+      "claim": "Skill's Glass/glassEffect/GlassEffectContainer/glassEffectID/glassEffectUnion/glassEffectTransition API (iOS 26) is presented as the full current surface.",
+      "kind": "other",
+      "correct_info": "I checked whether these symbols gained members in 26.x or 27; none did. Glass still has only regular, clear, identity, tint(_:) and interactive(_:). GlassEffectTransition still has identity, matchedGeometry and materialize. GlassEffectContainer still has only init(spacing:content:). Every page shows introducedAt 26.0, and none lists visionOS. The only glass-related addition is GlassButtonStyle.init(_:) in 26.1. WWDC26 says the refreshed look requires no code changes.",
+      "declaration": "struct Glass { func interactive(Bool) -> Glass; func tint(Color?) -> Glass; static var clear: Glass; static var identity: Glass; static var regular: Glass }",
+      "availability": "iOS 26.0, iPadOS 26.0, Mac Catalyst 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0",
+      "evidence_url": "https://developer.apple.com/documentation/swiftui/glass",
+      "source_type": "apple-doc",
+      "confidence": "high",
+      "action": "State in the skill that the core glass API is unchanged in iOS 27; the iOS 27 work is in toolbars, tabs, presentations and layout. Don't invent new Glass variants. Note that tint takes `Color?` (pass nil to clear the tint)."
+    },
+    {
+      "file": "references/01-api-reference.md",
+      "line": 7,
+      "claim": "`.glassEffect(_:in:isEnabled:)` with `isEnabled: Bool = true`; also used at references/07-anti-patterns.md:127, references/06-performance.md:162 and references/02-hig-principles.md:133.",
+      "kind": "wrong-signature",
+      "correct_info": "The only overload is glassEffect(_:in:). The doc path view/glasseffect(_:in:isenabled:) returns 404. The default shape is DefaultGlassEffectShape (a capsule).",
+      "declaration": "nonisolated func glassEffect(_ glass: Glass = .regular, in shape: some Shape = DefaultGlassEffectShape()) -> some View",
+      "availability": "iOS 26.0, iPadOS 26.0, Mac Catalyst 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0",
+      "evidence_url": "https://developer.apple.com/documentation/swiftui/view/glasseffect(_:in:)",
+      "source_type": "apple-doc",
+      "confidence": "high",
+      "action": "Remove isEnabled from every signature and example. To toggle, teach `.glassEffect(flag ? .regular : .identity)`. Fix the anti-pattern, performance and HIG files that rely on isEnabled."
+    },
+    {
+      "file": "references/01-api-reference.md",
+      "line": 224,
+      "claim": "`func glassEffectTransition(_ transition: GlassEffectTransition, isEnabled: Bool = true)` and `enum GlassEffectTransition { case identity; case matchedGeometry; case materialize }`",
+      "kind": "wrong-signature",
+      "correct_info": "glassEffectTransition has no isEnabled parameter. GlassEffectTransition is a struct with static properties `identity`, `matchedGeometry` and `materialize`. Separately, glassEffectID and glassEffectUnion take an Optional `some Hashable & Sendable` id, not a generic `ID: Hashable`. GlassEffectContainer has a single `init(spacing: CGFloat? = nil, @ContentBuilder content: () -> Content)`.",
+      "declaration": "@MainActor @preconcurrency func glassEffectTransition(_ transition: GlassEffectTransition) -> some View | struct GlassEffectTransition { static var identity; static var matchedGeometry; static var materialize } | nonisolated func glassEffectID(_ id: (some Hashable & Sendable)?, in namespace: Namespace.ID) -> some View | @MainActor @preconcurrency func glassEffectUnion(id: (some Hashable & Sendable)?, namespace: Namespace.ID) -> some View | @MainActor @preconcurrency init(spacing: CGFloat? = nil, @ContentBuilder content: () -> Content)",
+      "availability": "iOS 26.0, iPadOS 26.0, Mac Catalyst 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0",
+      "evidence_url": "https://developer.apple.com/documentation/swiftui/glasseffecttransition",
+      "source_type": "apple-doc",
+      "confidence": "high",
+      "action": "Replace these signature blocks with the verbatim declarations, and note that ids must be Sendable. Don't switch over GlassEffectTransition as an enum."
+    },
+    {
+      "file": "references/01-api-reference.md",
+      "line": 532,
+      "claim": "Minimum requirements table lists visionOS 26.0+ for Liquid Glass; SKILL.md frontmatter also lists visionOS 26+.",
+      "kind": "wrong-availability",
+      "correct_info": "Glass, glassEffect(_:in:), GlassEffectContainer, glassEffectID, glassEffectUnion, glassEffectTransition, GlassButtonStyle, GlassProminentButtonStyle and PrimitiveButtonStyle.glass(_:) list iOS, iPadOS, Mac Catalyst, macOS, tvOS and watchOS only, with no visionOS entry. On visionOS the glass API is glassBackgroundEffect(...) with GlassBackgroundEffect / GlassBackgroundDisplayMode (visionOS 1.0/2.4).",
+      "declaration": "nonisolated func glassBackgroundEffect<T, S>(_ effect: S, in shape: T, displayMode: GlassBackgroundDisplayMode = .always) -> some View where T : InsettableShape, S : GlassBackgroundEffect",
+      "availability": "glassEffect family: iOS 26.0, iPadOS 26.0, Mac Catalyst 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0 (no visionOS); glassBackgroundEffect(_:in:displayMode:): visionOS 2.4",
+      "evidence_url": "https://developer.apple.com/documentation/swiftui/view/glasseffect(_:in:)",
+      "source_type": "apple-doc",
+      "confidence": "high",
+      "action": "Drop visionOS from the glassEffect platform list, or add a note that visionOS uses glassBackgroundEffect. Add iOS 27 / Xcode 27 rows for the new chrome APIs."
+    },
+    {
+      "file": "references/01-api-reference.md",
+      "line": 466,
+      "claim": "`.rect(cornerRadius: .containerConcentric)` matches the parent radius; also used in SKILL.md golden rule 4, 03-design-tokens.md, 02-hig-principles.md, 07-anti-patterns.md, glass-card-stack.md and the pre-ship checklist.",
+      "kind": "nonexistent-api",
+      "correct_info": "`containerConcentric` does not appear in the ConcentricRectangle or Edge.Corner.Style docs. The real iOS 26 API is ConcentricRectangle (`init()`, `init(corners:isUniform:)`, uniform/individual-corner initializers) with Edge.Corner.Style members `.concentric`, `.concentric(minimum:)` and `.fixed(_:)`, plus Shape.rect(corners:isUniform:). Concentric radii resolve against `containerShape(_:)` or system containers.",
+      "declaration": "struct ConcentricRectangle | static var concentric: Edge.Corner.Style | static func concentric(minimum: Edge.Corner.Style?) -> Edge.Corner.Style | static func fixed(_: CGFloat) -> Edge.Corner.Style",
+      "availability": "iOS 26.0, iPadOS 26.0, Mac Catalyst 26.0, macOS 26.0, tvOS 26.0, visionOS 26.0, watchOS 26.0",
+      "evidence_url": "https://developer.apple.com/documentation/swiftui/concentricrectangle",
+      "source_type": "apple-doc",
+      "confidence": "high",
+      "action": "Replace every `.rect(cornerRadius: .containerConcentric)` with `.glassEffect(.regular, in: ConcentricRectangle())` or `.rect(corners: .concentric(minimum: 12), isUniform: true)`, and teach `.containerShape(_:)` on custom containers."
+    },
+    {
+      "file": "references/01-api-reference.md",
+      "line": 472,
+      "claim": "Concentric corners section offers only shape-based concentricity.",
+      "kind": "new-api-ios27",
+      "correct_info": "GeometryProxy.concentricCornerRadii and concentricCornerRadii(in:) return 'The resolved corner radii, or nil if no container shape is set or the shape does not provide sufficient corner info.' 'Unlike ConcentricRectangle, which calculates and draws the shape, this property only returns the calculated radii.' Release notes 177185166.",
+      "declaration": "var concentricCornerRadii: RectangleCornerRadii? { get }  |  func concentricCornerRadii(in frame: CGRect) -> RectangleCornerRadii?",
+      "availability": "iOS 27.0, iPadOS 27.0, Mac Catalyst 27.0, macOS 27.0, tvOS 27.0, visionOS 27.0, watchOS 27.0",
+      "evidence_url": "https://developer.apple.com/documentation/swiftui/geometryproxy/concentriccornerradii",
+      "source_type": "apple-doc",
+      "confidence": "high",
+      "action": "Add an iOS 27 note: use `GeometryReader { geo in … geo.concentricCornerRadii … }.containerShape(.rect(cornerRadius: 48))` for custom drawing or animation that must stay concentric with the glass container."
+    },
+    {
+      "file": "patterns/glass-floating-toolbar.md",
+      "line": 54,
+      "claim": "The 'Vertical floating palette' variation positions custom vertical glass bars with no awareness of system vertical bars.",
+      "kind": "new-api-ios27",
+      "correct_info": "EnvironmentValues.toolbarVerticalEdge (BETA, iOS/iPadOS 27.1): 'This value reflects the system's preferred edge for the vertical bar in the current context, regardless of whether a vertical bar is currently visible. Use it to position custom bars or other UI relative to the system's bar placement... Returns nil on devices and in contexts where the system never places a vertical bar.' On iPhone Duo, toolbars, tab bars and nav controls move to the side (HIG 'Designing for iPhone Duo', Sept 9 2026).",
+      "declaration": "var toolbarVerticalEdge: HorizontalEdge? { get }",
+      "availability": "iOS 27.1 (beta), iPadOS 27.1 (beta), Mac Catalyst 27.1, macOS 27.1, tvOS 27.1, visionOS 27.1, watchOS 27.1",
+      "evidence_url": "https://developer.apple.com/documentation/swiftui/environmentvalues/toolbarverticaledge",
+      "source_type": "apple-doc",
+      "confidence": "high",
+      "action": "In the floating-toolbar pattern, read `@Environment(\\.toolbarVerticalEdge)` and keep custom glass palettes off the system's vertical-bar edge. Label it beta (27.1)."
+    },
+    {
+      "file": "references/01-api-reference.md",
+      "line": 298,
+      "claim": "Skill assumes system bars are always horizontal (top nav bar / bottom tab bar).",
+      "kind": "new-api-ios27",
+      "correct_info": "View.toolbarVerticalBehavior(_:) with ToolbarVerticalBehavior (.automatic, .disabled) (BETA 27.1). '...Use disabled to opt out of the vertical bar, causing bar content to fall back to the standard horizontal top and bottom toolbars. Disable the vertical bar only for UIs that are better served by horizontal bars — such as a fullscreen video player with toolbar controls, or a non-scrolling layout like a calculator... avoid changing it frequently... To hide the bars on a given screen rather than change the layout, use toolbarVisibility(_:for:) instead.' Resolution: NavigationStack uses the top-most view, TabView the selected view, and NavigationSplitView the trailing-most column.",
+      "declaration": "nonisolated func toolbarVerticalBehavior(_ behavior: ToolbarVerticalBehavior) -> some View",
+      "availability": "iOS 27.1 (beta), iPadOS 27.1 (beta), Mac Catalyst 27.1, macOS 27.1, tvOS 27.1, visionOS 27.1, watchOS 27.1",
+      "evidence_url": "https://developer.apple.com/documentation/swiftui/view/toolbarverticalbehavior(_:)",
+      "source_type": "apple-doc",
+      "confidence": "high",
+      "action": "Add a 'Controls on the vertical axis (iPhone Duo, iOS 27.1 beta)' section explaining that system glass bars can render vertically. Default to automatic, use .disabled only for full-screen media or calculator-style screens, and never toggle it per state."
+    },
+    {
+      "file": "references/01-api-reference.md",
+      "line": 298,
+      "claim": "No per-item control over horizontal vs vertical bar placement.",
+      "kind": "new-api-ios27",
+      "correct_info": "ToolbarContent.axisBehavior(_:) and CustomizableToolbarContent.axisBehavior(_:) with ToolbarItemAxisBehavior (.automatic; .horizontalOnly: 'The item only supports horizontal bars. If an item only supports horizontal bars and no horizontal bars are present, the item is not shown.'; .verticalPreferred: '...prefers a vertical placement when both horizontal and vertical bars are present.') (BETA 27.1). HIG: 'Labels that include text stay in a horizontal bar, so prefer a symbol wherever one works.'",
+      "declaration": "nonisolated func axisBehavior(_ behavior: ToolbarItemAxisBehavior) -> some ToolbarContent",
+      "availability": "iOS 27.1 (beta), iPadOS 27.1 (beta), Mac Catalyst 27.1, macOS 27.1, tvOS 27.1, visionOS 27.1, watchOS 27.1",
+      "evidence_url": "https://developer.apple.com/documentation/swiftui/toolbarcontent/axisbehavior(_:)",
+      "source_type": "apple-doc",
+      "confidence": "high",
+      "action": "Document it with a warning that .horizontalOnly items disappear when only vertical bars exist. Recommend `Button(\"Title\", systemImage:)` (title + symbol) for every toolbar item, per the HIG."
+    },
+    {
+      "file": "references/01-api-reference.md",
+      "line": 355,
+      "claim": "No guidance on toolbar vs tab bar priority when bars share constrained space.",
+      "kind": "new-api-ios27",
+      "correct_info": "View.toolbarVerticalCompressionBehavior(_:) with ToolbarVerticalCompressionBehavior (.automatic, .prefersTabBar, .prefersToolbarItems) (BETA 27.1): 'Sets how bars should compress when different types of toolbars are hosted together and space is constrained.' HIG: navigation-focused experiences keep the tab bar (the default); task-oriented experiences minimize the tab bar to keep toolbar actions.",
+      "declaration": "nonisolated func toolbarVerticalCompressionBehavior(_ behavior: ToolbarVerticalCompressionBehavior) -> some View",
+      "availability": "iOS 27.1 (beta), iPadOS 27.1 (beta), Mac Catalyst 27.1, macOS 27.1, tvOS 27.1, visionOS 27.1, watchOS 27.1",
+      "evidence_url": "https://developer.apple.com/documentation/swiftui/view/toolbarverticalcompressionbehavior(_:)",
+      "source_type": "apple-doc",
+      "confidence": "high",
+      "action": "Add it to the TabView section as beta and give the HIG decision rule: editor or task screens use .prefersToolbarItems, browse screens keep the default."
+    },
+    {
+      "file": "",
+      "line": 0,
+      "claim": "New adaptive two-pane layout container (September 2026 'Arrangement views').",
+      "kind": "new-api-ios27",
+      "correct_info": "ArrangementView<Primary, Secondary> (init(primary:secondary:), init(_: ArrangementViewStyleConfiguration)). Styles via arrangementViewStyle(_:): .automatic (resolves to split), .split (SplitArrangementViewStyle.axes(_:)), .overlay (OverlayArrangementViewStyle.axes(_:)). Custom styles conform to ArrangementViewStyle (makeBody(configuration:), configuration.primary/.secondary). Modifiers: splitArrangementLayoutRatio(_:), splitArrangementLayoutRatio(minHorizontal:idealHorizontal:maxHorizontal:minVertical:idealVertical:maxVertical:), splitArrangementLayoutSize(minWidth:idealWidth:maxWidth:minHeight:idealHeight:maxHeight:), splitArrangementFixedLayoutSize(horizontal:vertical:), overlayArrangementEdge(_:). Environment values: splitArrangementAxis (Axis?) and overlayArrangementZIndex (Int). All are BETA 27.1. HIG: 'Keep navigation outside of arrangement views... place navigation containers like navigation split views and tab views around it rather than within it.'",
+      "declaration": "nonisolated struct ArrangementView<Primary, Secondary> where Primary : View, Secondary : View",
+      "availability": "iOS 27.1 (beta), iPadOS 27.1 (beta), Mac Catalyst 27.1, macOS 27.1, tvOS 27.1, visionOS 27.1, watchOS 27.1",
+      "evidence_url": "https://developer.apple.com/documentation/swiftui/arrangementview",
+      "source_type": "apple-doc",
+      "confidence": "high",
+      "action": "Optionally add a short layout note for glass media screens: `ArrangementView { PlayerControls() } secondary: { VideoPlayer() }.arrangementViewStyle(.overlay)`, with glass controls in the primary view. Keep TabView/NavigationStack outside. Mark it beta."
+    },
+    {
+      "file": "",
+      "line": 0,
+      "claim": "No hardware-avoidance API for floating glass controls.",
+      "kind": "new-api-ios27",
+      "correct_info": "ReservedRegion (id, frame, isActive, kind, margins). Kind members: .occlusion ('An area where an element, such as the Dynamic Island, a camera, or window controls, occludes content.') and .division ('...such as at the fold of a hinge'). QueryOptions.includeInactive. Read regions with GeometryProxy.reservedRegions(kind:options:layoutDirectionBehavior:). By default, frames are mirrored for RTL. All BETA 27.1.",
+      "declaration": "func reservedRegions(kind: ReservedRegion.Kind, options: ReservedRegion.QueryOptions = [], layoutDirectionBehavior: LayoutDirectionBehavior = .mirrors) -> [ReservedRegion]",
+      "availability": "iOS 27.1 (beta), iPadOS 27.1 (beta), Mac Catalyst 27.1, macOS 27.1, tvOS 27.1, visionOS 27.1, watchOS 27.1",
+      "evidence_url": "https://developer.apple.com/documentation/swiftui/reservedregion",
+      "source_type": "apple-doc",
+      "confidence": "high",
+      "action": "In the floating-glass patterns, note that custom floating glass (FABs, palettes) must avoid occlusion and division regions on iPhone Duo; system bars, sheets and alerts adapt automatically. Mark it beta."
+    },
+    {
+      "file": "",
+      "line": 0,
+      "claim": "Hinge state APIs (September 2026 'Hinge').",
+      "kind": "new-api-ios27",
+      "correct_info": "View.onHingeChange(isEnabled:_:) delivers DeviceHingeContext (var hinge: DeviceHinge?). DeviceHinge has angle (Angle) and status (DeviceHinge.Status: .closed, .partiallyOpen, .fullyOpen). All BETA 27.1.",
+      "declaration": "nonisolated func onHingeChange(isEnabled: Bool = true, _ action: @escaping (DeviceHingeContext, DeviceHingeContext) -> Void) -> some View",
+      "availability": "iOS 27.1 (beta), iPadOS 27.1 (beta), Mac Catalyst 27.1, macOS 27.1, tvOS 27.1, visionOS 27.1, watchOS 27.1",
+      "evidence_url": "https://developer.apple.com/documentation/swiftui/view/onhingechange(isenabled:_:)",
+      "source_type": "apple-doc",
+      "confidence": "high",
+      "action": "Mention it only briefly. It is low-relevance to glass; prefer ArrangementView or ReservedRegion over manual hinge math, following the HIG advice to avoid extreme layout changes."
+    },
+    {
+      "file": "",
+      "line": 0,
+      "claim": "Scene accessories (secondary display / camera content).",
+      "kind": "new-api-ios27",
+      "correct_info": "View.sceneAccessory(content:) (27.0) takes SceneAccessoryContent: ExternalNonInteractiveAccessory (27.0; 'presents non-interactive content on an external display') and CameraCaptureAccessory (27.1 beta; 'A scene accessory that presents content during camera capture', shown on the iPhone Duo outer display). Each has init(content:) and init(isEnabled: Binding<Bool>, content:), plus onAvailabilityChange.",
+      "declaration": "nonisolated func sceneAccessory<C>(@ContentBuilder content: () -> C) -> some View where C : SceneAccessoryContent",
+      "availability": "sceneAccessory / ExternalNonInteractiveAccessory: iOS 27.0, iPadOS 27.0; CameraCaptureAccessory: iOS 27.1 (beta), iPadOS 27.1 (beta)",
+      "evidence_url": "https://developer.apple.com/documentation/swiftui/view/sceneaccessory(content:)",
+      "source_type": "apple-doc",
+      "confidence": "high",
+      "action": "Out of scope for glass. List it in a 'not covered' note only."
+    },
+    {
+      "file": "references/01-api-reference.md",
+      "line": 116,
+      "claim": "Signatures throughout use `@ViewBuilder content` (e.g. GlassEffectContainer init(@ViewBuilder content:)).",
+      "kind": "changed-api",
+      "correct_info": "Xcode 27 introduces ContentBuilder: 'typealias ContentBuilder = ViewBuilder'. 'SwiftUI constructs type-agnostic content from closures that you mark with ContentBuilder, which serves as the unified replacement for type-specific builders like ToolbarContentBuilder and CommandsBuilder.' Apple's declarations (GlassEffectContainer.init, tabViewBottomAccessory, safeAreaBar, toolbarOverflowMenu, swipeActions, alert) now print @ContentBuilder. It is a typealias, so existing @ViewBuilder code still compiles; the docs list availability back to iOS 13.",
+      "declaration": "typealias ContentBuilder = ViewBuilder",
+      "availability": "iOS 13.0, iPadOS 13.0, Mac Catalyst 13.0, macOS 10.15, tvOS 13.0, visionOS 1.0, watchOS 6.0 (requires building with Xcode 27)",
+      "evidence_url": "https://developer.apple.com/documentation/swiftui/contentbuilder",
+      "source_type": "apple-doc",
+      "confidence": "high",
+      "action": "Update quoted signatures to match Apple (@ContentBuilder). Optionally show `@ContentBuilder var toolbarItems: some ToolbarContent { … }` for factored glass toolbar content when building with Xcode 27, noting that @ToolbarContentBuilder still works."
+    },
+    {
+      "file": "examples/01-SettingsScreen.swift",
+      "line": 0,
+      "claim": "Examples use `@State private var x = …` assuming property-wrapper semantics.",
+      "kind": "behavior-change",
+      "correct_info": "Building with Xcode 27, @State becomes a macro: `@attached(accessor, names: named(init), named(get), named(set)) @attached(peer, names: prefixed(`_`), prefixed(__), prefixed(`$`)) macro State()`. Release notes: the initial-value expression is no longer re-evaluated on every view re-instantiation, and 'This new behavior back-deploys to iOS 17 aligned OSes.' Breaks: assigning in init when a declaration initial value exists no longer compiles in some cases; the synthesized memberwise init for all-private structs is disabled; generic inference is less flexible; 'Composing @State with other property wrappers or macros is not supported.' The State() doc says: 'When you build with Xcode 26 or earlier, the system uses the State property wrapper instead.'",
+      "declaration": "@attached(accessor, names: named(init), named(get), named(set)) @attached(peer, names: prefixed(`_`), prefixed(__), prefixed(`$`)) macro State()",
+      "availability": "iOS 13.0, iPadOS 13.0, Mac Catalyst 13.0, macOS 10.15, tvOS 13.0, visionOS 1.0, watchOS 6.0 (macro when building with Xcode 27; behavior back-deploys to iOS 17-aligned)",
+      "evidence_url": "https://developer.apple.com/documentation/swiftui/state()",
+      "source_type": "apple-doc",
+      "confidence": "high",
+      "action": "Add a short Xcode 27 note: @State with an @Observable model is now initialized once, so the `@State private var model = Model()` pattern is safe. Don't give @State both an initial value and an init assignment, and don't stack it with other wrappers. A grep found no init-assigned @State in the current examples."
+    },
+    {
+      "file": "examples/04-PhotoDetailScreen.swift",
+      "line": 0,
+      "claim": "Full-bleed media screens under glass chrome have no SwiftUI way to set status bar style or visibility.",
+      "kind": "new-api-ios27",
+      "correct_info": "ToolbarPlacement.statusBar: 'Use with toolbarVisibility(_:for:) to hide the status bar, or with toolbarColorScheme(_:for:) to specify the preferred status bar style. Using this placement with other toolbar customization APIs has no effect.' Example: `.toolbarVisibility(hideStatusBar ? .hidden : .automatic, for: .statusBar).toolbarColorScheme(.dark, for: .statusBar)`.",
+      "declaration": "static var statusBar: ToolbarPlacement { get }",
+      "availability": "iOS 27.0, iPadOS 27.0, Mac Catalyst 27.0",
+      "evidence_url": "https://developer.apple.com/documentation/swiftui/toolbarplacement/statusbar",
+      "source_type": "apple-doc",
+      "confidence": "high",
+      "action": "In the photo, music and onboarding examples, show `.toolbarColorScheme(.dark, for: .statusBar)` for light-on-dark media behind glass, gated to iOS 27."
+    },
+    {
+      "file": "patterns/glass-search-field.md",
+      "line": 33,
+      "claim": "Search scope / tab-like pickers use the standard segmented picker.",
+      "kind": "new-api-ios27",
+      "correct_info": "TabsPickerStyle / PickerStyle.tabs: 'A picker style that presents options as segmented tabs... On iOS, tvOS, and visionOS, the visual appearance matches that of the standard .segmented style. On all supported platforms, VoiceOver announces options as tabs.' Release notes 173211711.",
+      "declaration": "struct TabsPickerStyle  |  static var tabs: TabsPickerStyle",
+      "availability": "iOS 27.0, iPadOS 27.0, Mac Catalyst 27.0, macOS 27.0, tvOS 27.0, visionOS 27.0",
+      "evidence_url": "https://developer.apple.com/documentation/swiftui/tabspickerstyle",
+      "source_type": "apple-doc",
+      "confidence": "high",
+      "action": "Use `.pickerStyle(.tabs)` (iOS 27) for pickers that switch content views. Keep .segmented for value selection. Note it is unavailable on watchOS."
+    },
+    {
+      "file": "patterns/glass-search-field.md",
+      "line": 83,
+      "claim": "Skill has no supported way to match text-field shape to capsule glass buttons.",
+      "kind": "new-api-ios27",
+      "correct_info": "View.textInputBorderShape(_:) with TextInputBorderShape (.automatic, .capsule, .roundedRectangle) and TextFieldStyle.bordered ('A text field style with a system-defined border whose shape is determined by the textInputBorderShape(_:) modifier'), both 27.0. TextFieldStyle.roundedBorder and .squareBorder carry deprecatedAt 27.2 with the message 'Use `textFieldStyle(.bordered)` with `textInputBorderShape(.roundedRectangle)`'. Example: `HStack { TextField(\"Search\", text: $searchText); Button(\"Go\", action: search) }.buttonBorderShape(.capsule).textInputBorderShape(.capsule)`.",
+      "declaration": "nonisolated func textInputBorderShape(_ shape: TextInputBorderShape) -> some View  |  static var bordered: BorderedTextFieldStyle { get }",
+      "availability": "iOS 27.0, iPadOS 27.0, Mac Catalyst 27.0, macOS 27.0, tvOS 27.0, visionOS 27.0, watchOS 27.0 (roundedBorder deprecatedAt 27.2 on iOS/iPadOS/Mac Catalyst/macOS)",
+      "evidence_url": "https://developer.apple.com/documentation/swiftui/view/textinputbordershape(_:)",
+      "source_type": "apple-doc",
+      "confidence": "high",
+      "action": "In the login and search patterns, teach `.textFieldStyle(.bordered).textInputBorderShape(.capsule)` next to capsule glass buttons instead of hand-made glassEffect fields. Avoid .roundedBorder in new code."
+    },
+    {
+      "file": "",
+      "line": 0,
+      "claim": "Swipe actions outside List.",
+      "kind": "new-api-ios27",
+      "correct_info": "swipeActions(edge:allowsFullSwipe:content:onPresentationChanged:) (27.0) adds actions to a row 'in a list or container'. swipeActionsContainer() (27.0) 'Coordinates swipe action dismissal and mutual exclusion across rows in a container'; 'Applying this modifier to a List is a no-op.' Use it with ScrollView/LazyVStack card stacks.",
+      "declaration": "nonisolated func swipeActions(edge: HorizontalEdge = .trailing, allowsFullSwipe: Bool = true, @ContentBuilder content: () -> some View, onPresentationChanged: @escaping (Bool) -> Void) -> some View  |  nonisolated func swipeActionsContainer() -> some View",
+      "availability": "iOS 27.0, iPadOS 27.0, Mac Catalyst 27.0, macOS 27.0, visionOS 27.0, watchOS 27.0",
+      "evidence_url": "https://developer.apple.com/documentation/swiftui/view/swipeactionscontainer()",
+      "source_type": "apple-doc",
+      "confidence": "high",
+      "action": "In glass-card-stack, mention system swipe actions on custom stacks (iOS 27) instead of custom drag gestures that reveal glass buttons."
+    },
+    {
+      "file": "",
+      "line": 0,
+      "claim": "Alerts and confirmation dialogs driven by an optional item or error.",
+      "kind": "new-api-ios27",
+      "correct_info": "New overloads: alert(_:item:actions:), alert(_:item:actions:message:), alert(error:actions:), alert(error:actions:message:), confirmationDialog(_:item:titleVisibility:actions:), confirmationDialog(_:item:titleVisibility:actions:message:). They require the Xcode 27 SDK but back-deploy: 'can now be used by projects targeting iOS 15.0, macOS 12.0, tvOS 15.0, watchOS 8.0, and visionOS 1.0' (release notes 179388848). Doc pages show iOS 15.0 with `@export(implementation)`.",
+      "declaration": "@export(implementation) nonisolated func alert<A, T>(_ title: Text, item data: Binding<T?>, @ContentBuilder actions: (T) -> A) -> some View where A : View",
+      "availability": "iOS 15.0, iPadOS 15.0, Mac Catalyst 15.0, macOS 12.0, tvOS 15.0, visionOS 1.0, watchOS 8.0 (requires Xcode 27 SDK)",
+      "evidence_url": "https://developer.apple.com/documentation/swiftui/view/alert(_:item:actions:)",
+      "source_type": "apple-doc",
+      "confidence": "high",
+      "action": "Where examples present destructive confirmations (e.g. 07-ProfileScreen), use `.confirmationDialog(\"Delete?\", item: $toDelete) { item in … }` when building with Xcode 27."
+    },
+    {
+      "file": "patterns/glass-modal-sheet.md",
+      "line": 95,
+      "claim": "Patterns and token recipes set .controlSize / .buttonBorderShape on a parent and expect them to style glass buttons inside sheets.",
+      "kind": "behavior-change",
+      "correct_info": "iOS 27 release notes (167448274): 'In apps built with the 27.0 SDKs, the controlSize, buttonSizing, buttonRepeatBehavior, menuIndicatorVisibility, and ButtonBorderShape environment values are now reset to their default values in sheets and popovers.'",
+      "declaration": "",
+      "availability": "Apps built with the 27.0 SDKs",
+      "evidence_url": "https://developer.apple.com/documentation/ios-ipados-release-notes/ios-ipados-27-release-notes",
+      "source_type": "apple-other",
+      "confidence": "high",
+      "action": "Add a gotcha: apply .controlSize(.large/.extraLarge) and .buttonBorderShape(.circle/.capsule) inside the sheet or popover content, not on the presenter."
+    },
+    {
+      "file": "patterns/glass-tab-bar.md",
+      "line": 83,
+      "claim": "Tab bar gotchas don't cover selection validity.",
+      "kind": "behavior-change",
+      "correct_info": "iOS 27 release notes (164516837): 'In apps built with the iOS 27.0 and iPadOS 27.0 SDKs, a TabView enforces that its selection is set to a visible tab. TabView might crash when its selection is set to a hidden or otherwise unavailable tab.'",
+      "declaration": "",
+      "availability": "Apps built with the iOS 27.0 / iPadOS 27.0 SDKs",
+      "evidence_url": "https://developer.apple.com/documentation/ios-ipados-release-notes/ios-ipados-27-release-notes",
+      "source_type": "apple-other",
+      "confidence": "high",
+      "action": "Add a gotcha: never bind TabView(selection:) to a tab that is hidden or not present (e.g. a conditional prominent or search tab)."
+    },
+    {
+      "file": "SKILL.md",
+      "line": 95,
+      "claim": "Mental model / appearance guidance is iOS 26-only.",
+      "kind": "behavior-change",
+      "correct_info": "WWDC26 'What's new in SwiftUI' (269): 'When I build and run our app, the Liquid Glass design automatically takes on its updated appearance... without having to change a single line of code! Liquid Glass has a refined look and automatically responds to the new Liquid Glass slider to adjust its tint.' 'On macOS, like on iOS, you can mark Liquid Glass custom elements as \"interactive\" so they respond more fluidly to user's clicks.' 'our iPad app automatically takes on a distinct appearance when inactive, with the icons and text dimming'. Use `@Environment(\\.appearsActive)` for custom elements. I found no SwiftUI API that reads the user's Liquid Glass tint preference.",
+      "declaration": "",
+      "availability": "iOS 27 / iPadOS 27 / macOS 27 (built with Xcode 27)",
+      "evidence_url": "https://developer.apple.com/videos/play/wwdc2026/269/",
+      "source_type": "apple-video",
+      "confidence": "medium",
+      "action": "Add an 'iOS 27 changes' note: the glass look is refreshed automatically, users can adjust glass tint, so don't fight it with heavy custom tints. Custom glass on iPad and Mac should dim when appearsActive is false. .interactive() now matters on macOS too."
+    },
+    {
+      "file": "patterns/glass-navigation-bar.md",
+      "line": 45,
+      "claim": "Search-in-nav-bar variation doesn't mention that the bar may minimize automatically.",
+      "kind": "behavior-change",
+      "correct_info": "ToolbarMinimizationBehavior.automatic: 'The system determines the minimize behavior. By default, navigation bars on iOS will minimize when the view has a searchable using the toolbarPrincipal placement.' SearchFieldPlacement.toolbarPrincipal: 'The search field appears in the principal section of the toolbar.'",
+      "declaration": "static var automatic: ToolbarMinimizationBehavior  |  static var toolbarPrincipal: SearchFieldPlacement { get }",
+      "availability": "ToolbarMinimizationBehavior: iOS 27.0, iPadOS 27.0, Mac Catalyst 27.0, macOS 27.0, tvOS 27.0, visionOS 27.0, watchOS 27.0",
+      "evidence_url": "https://developer.apple.com/documentation/swiftui/toolbarminimizationbehavior",
+      "source_type": "apple-doc",
+      "confidence": "high",
+      "action": "Note that `.searchable(text:, placement: .toolbarPrincipal)` on iOS 27 implies an auto-minimizing nav bar. Use `.toolbarMinimizationBehavior(.never, for: .navigationBar)` to opt out."
+    },
+    {
+      "file": "",
+      "line": 0,
+      "claim": "Menu item icons.",
+      "kind": "behavior-change",
+      "correct_info": "iOS 27 release notes (170480710): 'The menu bar on iPadOS 27.0 and macOS 27.0, as well as context menus on macOS 27.0, present a reduced set of menu item images. By default, SwiftUI now hides all menu item symbol images in most contexts... Use the labelStyle(_:) view modifier with the .titleAndIcon style to indicate that a menu item Label's icon should always be shown.'",
+      "declaration": "",
+      "availability": "iPadOS 27.0, macOS 27.0",
+      "evidence_url": "https://developer.apple.com/documentation/ios-ipados-release-notes/ios-ipados-27-release-notes",
+      "source_type": "apple-other",
+      "confidence": "high",
+      "action": "Mention it briefly in the iPad/macOS notes. Glass toolbar overflow and ToolbarOverflowMenu items still need Label titles."
+    },
+    {
+      "file": "references/01-api-reference.md",
+      "line": 317,
+      "claim": "Skill teaches ToolbarSpacer(.fixed) to add breathing room between glass items as a general technique.",
+      "kind": "design-guidance",
+      "correct_info": "HIG 'Designing for iPhone Duo' (new Sept 9 2026): 'Group related toolbar items instead of spacing them manually. Groups you create with ToolbarItemGroup... provide space between items and other groups automatically, and adapt as the available space changes, so avoid adding fixed spacing yourself.' Also: 'Provide both a title and a symbol for each toolbar item that isn't text-only', 'Use the system overflow menu', 'In general, don't override the default bar placement', 'Follow the standard placement order... Reserve the top of the vertical axis for primary navigation controls, like Back or Close, followed by prominent actions, like Done.'",
+      "declaration": "",
+      "availability": "",
+      "evidence_url": "https://developer.apple.com/design/human-interface-guidelines/designing-for-iphone-duo",
+      "source_type": "apple-other",
+      "confidence": "high",
+      "action": "Rewrite the ToolbarSpacer advice: prefer ToolbarItemGroup grouping and use ToolbarSpacer sparingly. Add the iPhone Duo vertical-controls rules to 02-hig-principles.md."
+    },
+    {
+      "file": "SKILL.md",
+      "line": 88,
+      "claim": "Golden rule 5: 'Never use .ultraThinMaterial or other legacy Material values in iOS 26+. They look out of place.' (also checklists/pre-ship-checklist.md:9)",
+      "kind": "design-guidance",
+      "correct_info": "HIG Materials: 'Don't use Liquid Glass in the content layer... Instead, use standard materials for elements in the content layer, such as app backgrounds.' Also: 'Only use clear Liquid Glass for components that appear over visually rich backgrounds... If the underlying content is bright, consider adding a dark dimming layer of 35% opacity.' And: 'The appearance of these variants can differ in response to certain system settings, like if people choose a preferred look for Liquid Glass in their device's settings.'",
+      "declaration": "",
+      "availability": "",
+      "evidence_url": "https://developer.apple.com/design/human-interface-guidelines/materials",
+      "source_type": "apple-other",
+      "confidence": "high",
+      "action": "Change the rule to 'Never use Material for chrome; standard materials remain correct for content-layer surfaces.' Add the 35% dimming guidance for .clear glass over bright media, and fix the checklist item."
+    },
+    {
+      "file": "references/01-api-reference.md",
+      "line": 344,
+      "claim": "`ToolbarItem { Button(...) { }.sharedBackgroundVisibility(.hidden) }`",
+      "kind": "compile-risk",
+      "correct_info": "sharedBackgroundVisibility is a ToolbarContent modifier only (the View variant returns 404). It must be applied to the ToolbarItem: `ToolbarItem(placement: .principal) { BuildStatus() }.sharedBackgroundVisibility(.hidden)`. 'Hiding the effect will cause the item to be placed in its own grouping.' Availability: iOS, iPadOS, Mac Catalyst and macOS only.",
+      "declaration": "nonisolated func sharedBackgroundVisibility(_ visibility: Visibility) -> some ToolbarContent",
+      "availability": "iOS 26.0, iPadOS 26.0, Mac Catalyst 26.0, macOS 26.0",
+      "evidence_url": "https://developer.apple.com/documentation/swiftui/toolbarcontent/sharedbackgroundvisibility(_:)",
+      "source_type": "apple-doc",
+      "confidence": "high",
+      "action": "Move the modifier outside the ToolbarItem closure in the API reference and any examples. Do the same for the new iOS 27 ToolbarContent modifiers (visibilityPriority, axisBehavior, contentMarginsRemoved)."
+    },
+    {
+      "file": "references/01-api-reference.md",
+      "line": 417,
+      "claim": "`ToolbarItem(placement: .bottomBar) { DefaultToolbarItem(kind: .search, placement: .bottomBar) }` (also patterns/glass-search-field.md:59-60)",
+      "kind": "compile-risk",
+      "correct_info": "DefaultToolbarItem conforms to ToolbarContent (init(kind:placement:)), while ToolbarItem<ID, Content> requires Content : View. A DefaultToolbarItem therefore cannot be the content of a ToolbarItem; it is placed directly in .toolbar { }. ToolbarDefaultItemKind members: sidebarToggle, search, title.",
+      "declaration": "nonisolated struct DefaultToolbarItem  |  init(kind: ToolbarDefaultItemKind, placement: ToolbarItemPlacement)",
+      "availability": "iOS 26.0, iPadOS 26.0, Mac Catalyst 26.0, macOS 26.0, tvOS 26.0, visionOS 26.0, watchOS 26.0",
+      "evidence_url": "https://developer.apple.com/documentation/swiftui/defaulttoolbaritem",
+      "source_type": "apple-doc",
+      "confidence": "medium",
+      "action": "Replace with `.toolbar { DefaultToolbarItem(kind: .search, placement: .bottomBar) }`."
+    },
+    {
+      "file": "references/01-api-reference.md",
+      "line": 372,
+      "claim": "tabBarMinimizeBehavior lists .automatic, .onScrollDown and .never only.",
+      "kind": "factually-wrong",
+      "correct_info": "TabBarMinimizeBehavior members: automatic, never, onScrollDown and onScrollUp ('Minimize the tab bar when upwards scrolling starts. Minimizing is supported for tab bars on only iPhone.'). onScrollDown says the same: 'Minimizing is supported for tab bars on only iPhone.'",
+      "declaration": "struct TabBarMinimizeBehavior { static let automatic; static let never; static let onScrollDown; static let onScrollUp }",
+      "availability": "iOS 26.0, iPadOS 26.0, Mac Catalyst 26.0, macOS 26.0, tvOS 26.0, visionOS 26.0, watchOS 26.0",
+      "evidence_url": "https://developer.apple.com/documentation/swiftui/tabbarminimizebehavior",
+      "source_type": "apple-doc",
+      "confidence": "high",
+      "action": "Add .onScrollUp, state that minimization is iPhone-only, and cross-reference the new iOS 27 navigation-bar toolbarMinimizationBehavior."
+    },
+    {
+      "file": "references/01-api-reference.md",
+      "line": 516,
+      "claim": "`ScrollView(.horizontal) { … }.scrollExtensionMode(.underSidebar)`",
+      "kind": "nonexistent-api",
+      "correct_info": "There is no scrollExtensionMode(_:) in SwiftUI (doc path returns 404, and it is absent from the Scroll views topic list). The real iOS 26 scroll-edge and safe-area APIs are scrollEdgeEffectStyle(_:for:) (ScrollEdgeEffectStyle .automatic/.hard/.soft), scrollEdgeEffectHidden(_:for:), safeAreaBar(edge:alignment:spacing:content:) and backgroundExtensionEffect() / backgroundExtensionEffect(isEnabled:).",
+      "declaration": "nonisolated func scrollEdgeEffectStyle(_ style: ScrollEdgeEffectStyle?, for edges: Edge.Set) -> some View",
+      "availability": "iOS 26.0, iPadOS 26.0, Mac Catalyst 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0",
+      "evidence_url": "https://developer.apple.com/documentation/swiftui/scroll-views",
+      "source_type": "apple-doc",
+      "confidence": "high",
+      "action": "Delete the 'Scroll extension' snippet and replace it with backgroundExtensionEffect / scrollEdgeEffectStyle guidance."
+    },
+    {
+      "file": "SKILL.md",
+      "line": 3,
+      "claim": "Frontmatter description, platforms and activation triggers mention only iOS 26 / Xcode 26.",
+      "kind": "skill-authoring",
+      "correct_info": "iOS 27 / Xcode 27 shipped with chrome-layer APIs the skill should trigger on: toolbarMinimizationBehavior, visibilityPriority, ToolbarOverflowMenu, topBarPinnedTrailing, TabRole.prominent, crossFade sheet transition, presentationPlacement, plus the iPhone Duo vertical-bar APIs (27.1 beta).",
+      "declaration": "",
+      "availability": "",
+      "evidence_url": "https://developer.apple.com/documentation/updates/swiftui",
+      "source_type": "apple-doc",
+      "confidence": "high",
+      "action": "Update the description and triggers to 'iOS 26 and iOS 27'. Add trigger terms (overflow menu, prominent tab, minimize navigation bar, iPhone Duo / vertical toolbar). Add a references/08-whats-new-ios27.md with availability gating (`if #available(iOS 27.0, *)`) and a clear BETA label on the 27.1 APIs. Update the Xcode row in the requirements table to 'Xcode 27 for iOS 27 APIs'."
+    }
+  ],
+  "symbols": [
+    {
+      "symbol": "Glass",
+      "declaration": "struct Glass",
+      "availability": "iOS 26.0, iPadOS 26.0, Mac Catalyst 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0",
+      "members": "interactive(_:) -> Glass, tint(_:) [func tint(Color?) -> Glass], clear, identity, regular",
+      "doc_url": "https://developer.apple.com/documentation/swiftui/glass",
+      "skill_usage_correct": true,
+      "notes": "No new members in 26.x or 27. No visionOS. The skill shows tint(_ color: Color); the real parameter is Color?."
+    },
+    {
+      "symbol": "View.glassEffect(_:in:)",
+      "declaration": "nonisolated func glassEffect(_ glass: Glass = .regular, in shape: some Shape = DefaultGlassEffectShape()) -> some View",
+      "availability": "iOS 26.0, iPadOS 26.0, Mac Catalyst 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0",
+      "members": "glass, shape",
+      "doc_url": "https://developer.apple.com/documentation/swiftui/view/glasseffect(_:in:)",
+      "skill_usage_correct": false,
+      "notes": "The skill documents and uses a nonexistent isEnabled: parameter; glasseffect(_:in:isenabled:) returns 404."
+    },
+    {
+      "symbol": "glassEffect(_:in:isEnabled:)",
+      "declaration": "NOT FOUND",
+      "availability": "",
+      "members": "",
+      "doc_url": "https://developer.apple.com/documentation/swiftui/view/glasseffect(_:in:isenabled:)",
+      "skill_usage_correct": false,
+      "notes": "404. Used in 01-api-reference, 07-anti-patterns, 06-performance and 02-hig-principles."
+    },
+    {
+      "symbol": "GlassEffectContainer",
+      "declaration": "@MainActor @preconcurrency struct GlassEffectContainer<Content> where Content : View",
+      "availability": "iOS 26.0, iPadOS 26.0, Mac Catalyst 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0",
+      "members": "init(spacing: CGFloat? = nil, @ContentBuilder content: () -> Content)",
+      "doc_url": "https://developer.apple.com/documentation/swiftui/glasseffectcontainer",
+      "skill_usage_correct": true,
+      "notes": "Only one initializer exists; the skill lists two, but call sites compile because spacing defaults to nil. The declaration now prints @ContentBuilder. No changes in 27."
+    },
+    {
+      "symbol": "View.glassEffectID(_:in:)",
+      "declaration": "nonisolated func glassEffectID(_ id: (some Hashable & Sendable)?, in namespace: Namespace.ID) -> some View",
+      "availability": "iOS 26.0, iPadOS 26.0, Mac Catalyst 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0",
+      "members": "id, namespace",
+      "doc_url": "https://developer.apple.com/documentation/swiftui/view/glasseffectid(_:in:)",
+      "skill_usage_correct": true,
+      "notes": "The skill's signature shows <ID: Hashable>; the real one requires Sendable and is Optional. Usage with String ids is fine."
+    },
+    {
+      "symbol": "View.glassEffectUnion(id:namespace:)",
+      "declaration": "@MainActor @preconcurrency func glassEffectUnion(id: (some Hashable & Sendable)?, namespace: Namespace.ID) -> some View",
+      "availability": "iOS 26.0, iPadOS 26.0, Mac Catalyst 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0",
+      "members": "id, namespace",
+      "doc_url": "https://developer.apple.com/documentation/swiftui/view/glasseffectunion(id:namespace:)",
+      "skill_usage_correct": true,
+      "notes": "'All Liquid Glass effects with the same shape and Liquid Glass variant will be combined into a single shape.' No changes."
+    },
+    {
+      "symbol": "GlassEffectTransition",
+      "declaration": "struct GlassEffectTransition",
+      "availability": "iOS 26.0, iPadOS 26.0, Mac Catalyst 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0",
+      "members": "identity, matchedGeometry, materialize",
+      "doc_url": "https://developer.apple.com/documentation/swiftui/glasseffecttransition",
+      "skill_usage_correct": false,
+      "notes": "The skill declares it as an enum. Member usage (.materialize, .matchedGeometry) is fine."
+    },
+    {
+      "symbol": "View.glassEffectTransition(_:)",
+      "declaration": "@MainActor @preconcurrency func glassEffectTransition(_ transition: GlassEffectTransition) -> some View",
+      "availability": "iOS 26.0, iPadOS 26.0, Mac Catalyst 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0",
+      "members": "transition",
+      "doc_url": "https://developer.apple.com/documentation/swiftui/view/glasseffecttransition(_:)",
+      "skill_usage_correct": false,
+      "notes": "The skill adds a nonexistent isEnabled: parameter."
+    },
+    {
+      "symbol": "GlassButtonStyle",
+      "declaration": "nonisolated struct GlassButtonStyle",
+      "availability": "iOS 26.0, iPadOS 26.0, Mac Catalyst 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0",
+      "members": "init(), init(_ glass: Glass) [26.1], makeBody(configuration:)",
+      "doc_url": "https://developer.apple.com/documentation/swiftui/glassbuttonstyle",
+      "skill_usage_correct": true,
+      "notes": "init(_:) is new in 26.1 (iOS/iPadOS/Catalyst/macOS/tvOS/watchOS 26.1)."
+    },
+    {
+      "symbol": "PrimitiveButtonStyle.glass(_:)",
+      "declaration": "nonisolated static func glass(_ glass: Glass) -> Self",
+      "availability": "iOS 26.0, iPadOS 26.0, Mac Catalyst 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0",
+      "members": "glass",
+      "doc_url": "https://developer.apple.com/documentation/swiftui/primitivebuttonstyle/glass(_:)",
+      "skill_usage_correct": true,
+      "notes": "Absent from the skill. Example: .buttonStyle(.glass(.clear)). The PrimitiveButtonStyle list also has glass, glassProminent and card ('applies a Liquid Glass effect when the button has focus')."
+    },
+    {
+      "symbol": "GlassProminentButtonStyle",
+      "declaration": "nonisolated struct GlassProminentButtonStyle",
+      "availability": "iOS 26.0, iPadOS 26.0, Mac Catalyst 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0",
+      "members": "init(), makeBody(configuration:)",
+      "doc_url": "https://developer.apple.com/documentation/swiftui/glassprominentbuttonstyle",
+      "skill_usage_correct": true,
+      "notes": "No Glass-configurable init. No changes."
+    },
+    {
+      "symbol": "DefaultGlassEffectShape",
+      "declaration": "struct DefaultGlassEffectShape",
+      "availability": "iOS 26.0, iPadOS 26.0, Mac Catalyst 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0",
+      "members": "init()",
+      "doc_url": "https://developer.apple.com/documentation/swiftui/defaultglasseffectshape",
+      "skill_usage_correct": true,
+      "notes": "'The default shape applied by glass effects, a capsule.'"
+    },
+    {
+      "symbol": "View.glassBackgroundEffect(_:in:displayMode:)",
+      "declaration": "nonisolated func glassBackgroundEffect<T, S>(_ effect: S, in shape: T, displayMode: GlassBackgroundDisplayMode = .always) -> some View where T : InsettableShape, S : GlassBackgroundEffect",
+      "availability": "visionOS 2.4",
+      "members": "effect, shape, displayMode",
+      "doc_url": "https://developer.apple.com/documentation/swiftui/view/glassbackgroundeffect(_:in:displaymode:)",
+      "skill_usage_correct": true,
+      "notes": "The visionOS glass API; the skill wrongly implies glassEffect works on visionOS."
+    },
+    {
+      "symbol": "ToolbarContent.visibilityPriority(_:)",
+      "declaration": "@MainActor @preconcurrency func visibilityPriority(_ priority: ToolbarItemVisibilityPriority) -> some ToolbarContent",
+      "availability": "iOS 27.0, iPadOS 27.0, Mac Catalyst 27.0, macOS 26.1, tvOS 27.0, visionOS 27.0, watchOS 27.0",
+      "members": "priority",
+      "doc_url": "https://developer.apple.com/documentation/swiftui/toolbarcontent/visibilitypriority(_:)",
+      "skill_usage_correct": true,
+      "notes": "New, absent from the skill. Example: ToolbarItem { PrimaryControl() }.visibilityPriority(.high)."
+    },
+    {
+      "symbol": "ToolbarItemVisibilityPriority",
+      "declaration": "struct ToolbarItemVisibilityPriority",
+      "availability": "iOS 27.0, iPadOS 27.0, Mac Catalyst 27.0, macOS 26.1, tvOS 27.0, visionOS 27.0, watchOS 27.0",
+      "members": "automatic, low, high, init(lowerThan:), init(higherThan:)",
+      "doc_url": "https://developer.apple.com/documentation/swiftui/toolbaritemvisibilitypriority",
+      "skill_usage_correct": true,
+      "notes": "New."
+    },
+    {
+      "symbol": "ToolbarOverflowMenu",
+      "declaration": "nonisolated struct ToolbarOverflowMenu<Content> where Content : View",
+      "availability": "iOS 27.0, iPadOS 27.0, Mac Catalyst 27.0, visionOS 27.0",
+      "members": "init(content: () -> Content)",
+      "doc_url": "https://developer.apple.com/documentation/swiftui/toolbaroverflowmenu",
+      "skill_usage_correct": true,
+      "notes": "New, with no macOS, tvOS or watchOS. Usage: .toolbar { ToolbarOverflowMenu { Button(\"Action 1\") { } } }."
+    },
+    {
+      "symbol": "View.toolbarOverflowMenu(content:)",
+      "declaration": "nonisolated func toolbarOverflowMenu<C>(@ContentBuilder content: () -> C) -> some View where C : View",
+      "availability": "iOS 27.0, iPadOS 27.0, Mac Catalyst 27.0, visionOS 27.0",
+      "members": "content",
+      "doc_url": "https://developer.apple.com/documentation/swiftui/view/toolbaroverflowmenu(content:)",
+      "skill_usage_correct": true,
+      "notes": "New and not on the Updates page. View-modifier form of ToolbarOverflowMenu."
+    },
+    {
+      "symbol": "ToolbarItemPlacement.topBarPinnedTrailing",
+      "declaration": "static let topBarPinnedTrailing: ToolbarItemPlacement",
+      "availability": "iOS 27.0, iPadOS 27.0, Mac Catalyst 27.0, visionOS 27.0",
+      "members": "",
+      "doc_url": "https://developer.apple.com/documentation/swiftui/toolbaritemplacement/topbarpinnedtrailing",
+      "skill_usage_correct": true,
+      "notes": "New. 'Pinned items only move to the overflow menu when search is active and there isn't enough room.'"
+    },
+    {
+      "symbol": "ToolbarItemPlacement",
+      "declaration": "struct ToolbarItemPlacement",
+      "availability": "iOS 14.0, iPadOS 14.0, Mac Catalyst 14.0, macOS 11.0, tvOS 14.0, visionOS 1.0, watchOS 7.0",
+      "members": "automatic, principal, status, primaryAction, secondaryAction, confirmationAction, cancellationAction, destructiveAction, navigation, topBarLeading, topBarTrailing, topBarPinnedTrailing, bottomBar, bottomOrnament, keyboard, accessoryBar(id:), init(id:) [deprecated], navigationBarLeading [deprecated], navigationBarTrailing [deprecated], largeSubtitle, largeTitle, subtitle, title",
+      "doc_url": "https://developer.apple.com/documentation/swiftui/toolbaritemplacement",
+      "skill_usage_correct": true,
+      "notes": "largeTitle and subtitle are iOS/iPadOS/Catalyst 26.0; title is 14.0. Only topBarPinnedTrailing is new in 27."
+    },
+    {
+      "symbol": "ToolbarItemPlacement.largeTitle",
+      "declaration": "static let largeTitle: ToolbarItemPlacement",
+      "availability": "iOS 26.0, iPadOS 26.0, Mac Catalyst 26.0",
+      "members": "",
+      "doc_url": "https://developer.apple.com/documentation/swiftui/toolbaritemplacement/largetitle",
+      "skill_usage_correct": true,
+      "notes": "iOS 26 API, absent from the skill. 'takes precedence over the value provided to the View.navigationTitle(_:) modifier.'"
+    },
+    {
+      "symbol": "ToolbarItemPlacement.subtitle",
+      "declaration": "static let subtitle: ToolbarItemPlacement",
+      "availability": "iOS 26.0, iPadOS 26.0, Mac Catalyst 26.0",
+      "members": "",
+      "doc_url": "https://developer.apple.com/documentation/swiftui/toolbaritemplacement/subtitle",
+      "skill_usage_correct": true,
+      "notes": "iOS 26 API, absent from the skill."
+    },
+    {
+      "symbol": "View.toolbarMinimizationBehavior(_:for:)",
+      "declaration": "nonisolated func toolbarMinimizationBehavior(_ behavior: ToolbarMinimizationBehavior, for bars: ToolbarPlacement...) -> some View",
+      "availability": "iOS 27.0, iPadOS 27.0, Mac Catalyst 27.0, macOS 27.0, tvOS 27.0, visionOS 27.0, watchOS 27.0",
+      "members": "behavior, bars",
+      "doc_url": "https://developer.apple.com/documentation/swiftui/view/toolbarminimizationbehavior(_:for:)",
+      "skill_usage_correct": true,
+      "notes": "New. Replaces the WWDC26 spelling toolbarMinimizeBehavior. Supported placement: navigationBar."
+    },
+    {
+      "symbol": "toolbarMinimizeBehavior(_:for:)",
+      "declaration": "NOT FOUND",
+      "availability": "",
+      "members": "",
+      "doc_url": "https://developer.apple.com/documentation/swiftui/view/toolbarminimizebehavior(_:for:)",
+      "skill_usage_correct": true,
+      "notes": "404. Shown in WWDC26 session 269 code but replaced by toolbarMinimizationBehavior (release notes 177954148)."
+    },
+    {
+      "symbol": "ToolbarMinimizationBehavior",
+      "declaration": "struct ToolbarMinimizationBehavior",
+      "availability": "iOS 27.0, iPadOS 27.0, Mac Catalyst 27.0, macOS 27.0, tvOS 27.0, visionOS 27.0, watchOS 27.0",
+      "members": "automatic, never, onScrollDown, onScrollUp",
+      "doc_url": "https://developer.apple.com/documentation/swiftui/toolbarminimizationbehavior",
+      "skill_usage_correct": true,
+      "notes": "automatic: nav bars minimize by default with searchable placement .toolbarPrincipal."
+    },
+    {
+      "symbol": "View.toolbarMinimizationRestoration(_:for:)",
+      "declaration": "nonisolated func toolbarMinimizationRestoration(_ restoration: ToolbarMinimizationRestoration, for bars: ToolbarPlacement...) -> some View",
+      "availability": "iOS 27.0, iPadOS 27.0, Mac Catalyst 27.0, macOS 27.0, tvOS 27.0, visionOS 27.0, watchOS 27.0",
+      "members": "restoration, bars",
+      "doc_url": "https://developer.apple.com/documentation/swiftui/view/toolbarminimizationrestoration(_:for:)",
+      "skill_usage_correct": true,
+      "notes": "New and not on the Updates page. Only navigationBar + onScrollDown."
+    },
+    {
+      "symbol": "ToolbarMinimizationRestoration",
+      "declaration": "struct ToolbarMinimizationRestoration",
+      "availability": "iOS 27.0, iPadOS 27.0, Mac Catalyst 27.0, macOS 27.0, tvOS 27.0, visionOS 27.0, watchOS 27.0",
+      "members": "atScrollEdge, automatic",
+      "doc_url": "https://developer.apple.com/documentation/swiftui/toolbarminimizationrestoration",
+      "skill_usage_correct": true,
+      "notes": "New."
+    },
+    {
+      "symbol": "View.toolbarMinimizationSafeAreaAdjustment(_:for:)",
+      "declaration": "nonisolated func toolbarMinimizationSafeAreaAdjustment(_ adjustment: ToolbarMinimizationSafeAreaAdjustment, for bars: ToolbarPlacement...) -> some View",
+      "availability": "iOS 27.0, iPadOS 27.0, Mac Catalyst 27.0, macOS 27.0, tvOS 27.0, visionOS 27.0, watchOS 27.0",
+      "members": "adjustment, bars",
+      "doc_url": "https://developer.apple.com/documentation/swiftui/view/toolbarminimizationsafeareaadjustment(_:for:)",
+      "skill_usage_correct": true,
+      "notes": "New and not on the Updates page. Only navigationBar."
+    },
+    {
+      "symbol": "ToolbarMinimizationSafeAreaAdjustment",
+      "declaration": "struct ToolbarMinimizationSafeAreaAdjustment",
+      "availability": "iOS 27.0, iPadOS 27.0, Mac Catalyst 27.0, macOS 27.0, tvOS 27.0, visionOS 27.0, watchOS 27.0",
+      "members": "automatic, disabled, enabled",
+      "doc_url": "https://developer.apple.com/documentation/swiftui/toolbarminimizationsafeareaadjustment",
+      "skill_usage_correct": true,
+      "notes": "New."
+    },
+    {
+      "symbol": "ToolbarContent.contentMarginsRemoved(_:)",
+      "declaration": "nonisolated func contentMarginsRemoved(_ removed: Bool = true) -> some ToolbarContent",
+      "availability": "iOS 27.0, iPadOS 27.0, Mac Catalyst 27.0, macOS 27.0, tvOS 27.0, visionOS 27.0, watchOS 27.0",
+      "members": "removed",
+      "doc_url": "https://developer.apple.com/documentation/swiftui/toolbarcontent/contentmarginsremoved(_:)",
+      "skill_usage_correct": true,
+      "notes": "New and not on the Updates page."
+    },
+    {
+      "symbol": "ToolbarContent",
+      "declaration": "@MainActor @preconcurrency protocol ToolbarContent",
+      "availability": "iOS 14.0, iPadOS 14.0, Mac Catalyst 14.0, macOS 11.0, tvOS 14.0, visionOS 1.0, watchOS 7.0",
+      "members": "body, Body, axisBehavior(_:), hidden(_:), sharedBackgroundVisibility(_:), visibilityPriority(_:), matchedTransitionSource(id:in:), contentMarginsRemoved(_:)",
+      "doc_url": "https://developer.apple.com/documentation/swiftui/toolbarcontent",
+      "skill_usage_correct": false,
+      "notes": "The skill applies sharedBackgroundVisibility to a Button (View) instead of the ToolbarItem."
+    },
+    {
+      "symbol": "ToolbarContent.sharedBackgroundVisibility(_:)",
+      "declaration": "nonisolated func sharedBackgroundVisibility(_ visibility: Visibility) -> some ToolbarContent",
+      "availability": "iOS 26.0, iPadOS 26.0, Mac Catalyst 26.0, macOS 26.0",
+      "members": "visibility",
+      "doc_url": "https://developer.apple.com/documentation/swiftui/toolbarcontent/sharedbackgroundvisibility(_:)",
+      "skill_usage_correct": false,
+      "notes": "View.sharedBackgroundVisibility returns 404. The skill attaches it to a Button inside ToolbarItem, which is a compile risk."
+    },
+    {
+      "symbol": "ToolbarSpacer",
+      "declaration": "nonisolated struct ToolbarSpacer",
+      "availability": "iOS 26.0, iPadOS 26.0, Mac Catalyst 26.0, macOS 26.0",
+      "members": "nonisolated init(_ sizing: SpacerSizing = .flexible, placement: ToolbarItemPlacement = .automatic)",
+      "doc_url": "https://developer.apple.com/documentation/swiftui/toolbarspacer",
+      "skill_usage_correct": true,
+      "notes": "The skill's signature is correct. No tvOS, watchOS or visionOS. The HIG (iPhone Duo) prefers ToolbarItemGroup over manual fixed spacing."
+    },
+    {
+      "symbol": "DefaultToolbarItem",
+      "declaration": "nonisolated struct DefaultToolbarItem",
+      "availability": "iOS 26.0, iPadOS 26.0, Mac Catalyst 26.0, macOS 26.0, tvOS 26.0, visionOS 26.0, watchOS 26.0",
+      "members": "init(kind: ToolbarDefaultItemKind, placement: ToolbarItemPlacement)",
+      "doc_url": "https://developer.apple.com/documentation/swiftui/defaulttoolbaritem",
+      "skill_usage_correct": false,
+      "notes": "Conforms to ToolbarContent. The skill nests it inside ToolbarItem (Content : View), which is a compile risk."
+    },
+    {
+      "symbol": "ToolbarDefaultItemKind",
+      "declaration": "struct ToolbarDefaultItemKind",
+      "availability": "iOS 17.0, iPadOS 17.0, Mac Catalyst 17.0, macOS 14.0, tvOS 17.0, visionOS 1.0, watchOS 10.0",
+      "members": "sidebarToggle, search, title",
+      "doc_url": "https://developer.apple.com/documentation/swiftui/toolbardefaultitemkind",
+      "skill_usage_correct": true,
+      "notes": "title is iOS 18.0. No changes in 27."
+    },
+    {
+      "symbol": "ToolbarItem",
+      "declaration": "nonisolated struct ToolbarItem<ID, Content> where Content : View",
+      "availability": "iOS 14.0+ (type)",
+      "members": "init(placement:content:), init(id:placement:content:), init(id:placement:showsByDefault:content:) [deprecated]",
+      "doc_url": "https://developer.apple.com/documentation/swiftui/toolbaritem",
+      "skill_usage_correct": true,
+      "notes": "Content must be a View. Used to verify the DefaultToolbarItem nesting issue."
+    },
+    {
+      "symbol": "ContentToolbarPlacement",
+      "declaration": "struct ContentToolbarPlacement",
+      "availability": "iOS 18.4, iPadOS 18.4, Mac Catalyst 18.4, macOS 15.4, tvOS 18.4, visionOS 2.4, watchOS 11.4",
+      "members": "tabViewSidebar",
+      "doc_url": "https://developer.apple.com/documentation/swiftui/contenttoolbarplacement",
+      "skill_usage_correct": true,
+      "notes": "Not new. Used with contentToolbar(for:content:) for sidebarAdaptable TabView."
+    },
+    {
+      "symbol": "ToolbarPlacement.statusBar",
+      "declaration": "static var statusBar: ToolbarPlacement { get }",
+      "availability": "iOS 27.0, iPadOS 27.0, Mac Catalyst 27.0",
+      "members": "",
+      "doc_url": "https://developer.apple.com/documentation/swiftui/toolbarplacement/statusbar",
+      "skill_usage_correct": true,
+      "notes": "New. Works only with toolbarVisibility(_:for:) and toolbarColorScheme(_:for:)."
+    },
+    {
+      "symbol": "TabRole",
+      "declaration": "struct TabRole",
+      "availability": "iOS 18.0, iPadOS 18.0, Mac Catalyst 18.0, macOS 15.0, tvOS 18.0, visionOS 2.0, watchOS 11.0",
+      "members": "prominent [27.0], search",
+      "doc_url": "https://developer.apple.com/documentation/swiftui/tabrole",
+      "skill_usage_correct": true,
+      "notes": "The skill uses .search correctly; .prominent is absent."
+    },
+    {
+      "symbol": "TabRole.prominent",
+      "declaration": "static var prominent: TabRole { get }",
+      "availability": "iOS 27.0, iPadOS 27.0, Mac Catalyst 27.0, macOS 27.0, tvOS 27.0, visionOS 27.0, watchOS 27.0",
+      "members": "",
+      "doc_url": "https://developer.apple.com/documentation/swiftui/tabrole/prominent",
+      "skill_usage_correct": true,
+      "notes": "New. Only one prominent tab; .search gets the treatment if no explicit .prominent exists. Usage: Tab(role: .prominent) { CartTab() }."
+    },
+    {
+      "symbol": "NavigationTransition.crossFade",
+      "declaration": "static var crossFade: CrossFadeNavigationTransition { get }",
+      "availability": "iOS 27.0, iPadOS 27.0, Mac Catalyst 27.0, tvOS 27.0, visionOS 27.0, watchOS 27.0",
+      "members": "",
+      "doc_url": "https://developer.apple.com/documentation/swiftui/navigationtransition/crossfade",
+      "skill_usage_correct": true,
+      "notes": "New, no macOS. Applied inside the sheet content: .navigationTransition(.crossFade)."
+    },
+    {
+      "symbol": "NavigationTransition",
+      "declaration": "protocol NavigationTransition",
+      "availability": "iOS 18.0, iPadOS 18.0, Mac Catalyst 18.0, macOS 15.0, tvOS 18.0, visionOS 2.0, watchOS 11.0",
+      "members": "automatic, AutomaticNavigationTransition, crossFade, CrossFadeNavigationTransition, zoom(sourceID:in:), ZoomNavigationTransition; conforming AnyNavigationTransition",
+      "doc_url": "https://developer.apple.com/documentation/swiftui/navigationtransition",
+      "skill_usage_correct": true,
+      "notes": "The skill's .zoom usage is correct."
+    },
+    {
+      "symbol": "TabBarMinimizeBehavior",
+      "declaration": "struct TabBarMinimizeBehavior",
+      "availability": "iOS 26.0, iPadOS 26.0, Mac Catalyst 26.0, macOS 26.0, tvOS 26.0, visionOS 26.0, watchOS 26.0",
+      "members": "automatic, never, onScrollDown, onScrollUp",
+      "doc_url": "https://developer.apple.com/documentation/swiftui/tabbarminimizebehavior",
+      "skill_usage_correct": true,
+      "notes": "The skill omits onScrollUp and the iPhone-only note. No changes in 27."
+    },
+    {
+      "symbol": "View.tabBarMinimizeBehavior(_:)",
+      "declaration": "nonisolated func tabBarMinimizeBehavior(_ behavior: TabBarMinimizeBehavior) -> some View",
+      "availability": "iOS 26.0, iPadOS 26.0, Mac Catalyst 26.0, macOS 26.0, tvOS 26.0, visionOS 26.0, watchOS 26.0",
+      "members": "behavior",
+      "doc_url": "https://developer.apple.com/documentation/swiftui/view/tabbarminimizebehavior(_:)",
+      "skill_usage_correct": true,
+      "notes": "Unchanged."
+    },
+    {
+      "symbol": "View.tabViewBottomAccessory(content:)",
+      "declaration": "nonisolated func tabViewBottomAccessory<Content>(@ContentBuilder content: () -> Content) -> some View where Content : View",
+      "availability": "iOS 26.0, iPadOS 26.0, Mac Catalyst 26.0",
+      "members": "content",
+      "doc_url": "https://developer.apple.com/documentation/swiftui/view/tabviewbottomaccessory(content:)",
+      "skill_usage_correct": true,
+      "notes": "iOS, iPadOS and Mac Catalyst only. Now printed with @ContentBuilder."
+    },
+    {
+      "symbol": "View.tabViewBottomAccessory(isEnabled:content:)",
+      "declaration": "nonisolated func tabViewBottomAccessory<Content>(isEnabled: Bool, @ContentBuilder content: () -> Content) -> some View where Content : View",
+      "availability": "iOS 26.1, iPadOS 26.1, Mac Catalyst 26.1",
+      "members": "isEnabled, content",
+      "doc_url": "https://developer.apple.com/documentation/swiftui/view/tabviewbottomaccessory(isenabled:content:)",
+      "skill_usage_correct": true,
+      "notes": "New in 26.1, absent from the skill."
+    },
+    {
+      "symbol": "TabViewBottomAccessoryPlacement",
+      "declaration": "enum TabViewBottomAccessoryPlacement",
+      "availability": "iOS 26.0, iPadOS 26.0, Mac Catalyst 26.0, macOS 26.0, tvOS 26.0, visionOS 26.0, watchOS 26.0",
+      "members": "expanded, inline",
+      "doc_url": "https://developer.apple.com/documentation/swiftui/tabviewbottomaccessoryplacement",
+      "skill_usage_correct": false,
+      "notes": "The skill says .expanded | .collapsed; .collapsed does not exist."
+    },
+    {
+      "symbol": "EnvironmentValues.tabViewBottomAccessoryPlacement",
+      "declaration": "var tabViewBottomAccessoryPlacement: TabViewBottomAccessoryPlacement? { get }",
+      "availability": "iOS 26.0, iPadOS 26.0, Mac Catalyst 26.0, macOS 26.0, tvOS 26.0, visionOS 26.0, watchOS 26.0",
+      "members": "",
+      "doc_url": "https://developer.apple.com/documentation/swiftui/environmentvalues/tabviewbottomaccessoryplacement",
+      "skill_usage_correct": false,
+      "notes": "Optional; nil means an undefined placement. The skill treats it as non-optional."
+    },
+    {
+      "symbol": "TabSearchActivation",
+      "declaration": "struct TabSearchActivation",
+      "availability": "iOS 26.0, iPadOS 26.0, Mac Catalyst 26.0, macOS 26.0, tvOS 26.0, visionOS 26.0, watchOS 26.0",
+      "members": "automatic, searchTabSelection",
+      "doc_url": "https://developer.apple.com/documentation/swiftui/tabsearchactivation",
+      "skill_usage_correct": true,
+      "notes": "Used with tabViewSearchActivation(_:). No changes."
+    },
+    {
+      "symbol": "ContentBuilder",
+      "declaration": "typealias ContentBuilder = ViewBuilder",
+      "availability": "iOS 13.0, iPadOS 13.0, Mac Catalyst 13.0, macOS 10.15, tvOS 13.0, visionOS 1.0, watchOS 6.0",
+      "members": "",
+      "doc_url": "https://developer.apple.com/documentation/swiftui/contentbuilder",
+      "skill_usage_correct": true,
+      "notes": "Xcode 27. Unified replacement for ToolbarContentBuilder and CommandsBuilder; @ViewBuilder code still compiles."
+    },
+    {
+      "symbol": "State() macro",
+      "declaration": "@attached(accessor, names: named(init), named(get), named(set)) @attached(peer, names: prefixed(`_`), prefixed(__), prefixed(`$`)) macro State()",
+      "availability": "iOS 13.0, iPadOS 13.0, Mac Catalyst 13.0, macOS 10.15, tvOS 13.0, visionOS 1.0, watchOS 6.0",
+      "members": "",
+      "doc_url": "https://developer.apple.com/documentation/swiftui/state()",
+      "skill_usage_correct": true,
+      "notes": "Used when building with Xcode 27; the default value is created once; back-deploys to iOS 17-aligned OSes per release notes. No init-assigned @State found in the skill examples."
+    },
+    {
+      "symbol": "EnvironmentValues.toolbarVerticalEdge",
+      "declaration": "var toolbarVerticalEdge: HorizontalEdge? { get }",
+      "availability": "iOS 27.1 (beta), iPadOS 27.1 (beta), Mac Catalyst 27.1, macOS 27.1, tvOS 27.1, visionOS 27.1, watchOS 27.1",
+      "members": "",
+      "doc_url": "https://developer.apple.com/documentation/swiftui/environmentvalues/toolbarverticaledge",
+      "skill_usage_correct": true,
+      "notes": "New (iPhone Duo). nil where no vertical bar is ever used."
+    },
+    {
+      "symbol": "View.toolbarVerticalBehavior(_:)",
+      "declaration": "nonisolated func toolbarVerticalBehavior(_ behavior: ToolbarVerticalBehavior) -> some View",
+      "availability": "iOS 27.1 (beta), iPadOS 27.1 (beta), Mac Catalyst 27.1, macOS 27.1, tvOS 27.1, visionOS 27.1, watchOS 27.1",
+      "members": "behavior",
+      "doc_url": "https://developer.apple.com/documentation/swiftui/view/toolbarverticalbehavior(_:)",
+      "skill_usage_correct": true,
+      "notes": "New. Example: TabView { … }.toolbarVerticalBehavior(.disabled)."
+    },
+    {
+      "symbol": "ToolbarVerticalBehavior",
+      "declaration": "struct ToolbarVerticalBehavior",
+      "availability": "iOS 27.1 (beta), iPadOS 27.1 (beta), Mac Catalyst 27.1, macOS 27.1, tvOS 27.1, visionOS 27.1, watchOS 27.1",
+      "members": "automatic, disabled",
+      "doc_url": "https://developer.apple.com/documentation/swiftui/toolbarverticalbehavior",
+      "skill_usage_correct": true,
+      "notes": "New."
+    },
+    {
+      "symbol": "ToolbarItemAxisBehavior",
+      "declaration": "struct ToolbarItemAxisBehavior",
+      "availability": "iOS 27.1 (beta), iPadOS 27.1 (beta), Mac Catalyst 27.1, macOS 27.1, tvOS 27.1, visionOS 27.1, watchOS 27.1",
+      "members": "automatic, horizontalOnly, verticalPreferred",
+      "doc_url": "https://developer.apple.com/documentation/swiftui/toolbaritemaxisbehavior",
+      "skill_usage_correct": true,
+      "notes": "New. horizontalOnly items are hidden when no horizontal bar exists."
+    },
+    {
+      "symbol": "ToolbarContent.axisBehavior(_:)",
+      "declaration": "nonisolated func axisBehavior(_ behavior: ToolbarItemAxisBehavior) -> some ToolbarContent",
+      "availability": "iOS 27.1 (beta), iPadOS 27.1 (beta), Mac Catalyst 27.1, macOS 27.1, tvOS 27.1, visionOS 27.1, watchOS 27.1",
+      "members": "behavior",
+      "doc_url": "https://developer.apple.com/documentation/swiftui/toolbarcontent/axisbehavior(_:)",
+      "skill_usage_correct": true,
+      "notes": "New. Example: ToolbarItem(placement: .primaryAction) { Toggle(…) }.axisBehavior(.horizontalOnly)."
+    },
+    {
+      "symbol": "CustomizableToolbarContent.axisBehavior(_:)",
+      "declaration": "nonisolated func axisBehavior(_ behavior: ToolbarItemAxisBehavior) -> some CustomizableToolbarContent",
+      "availability": "iOS 27.1 (beta), iPadOS 27.1 (beta), Mac Catalyst 27.1, macOS 27.1, tvOS 27.1, visionOS 27.1, watchOS 27.1",
+      "members": "behavior",
+      "doc_url": "https://developer.apple.com/documentation/swiftui/customizabletoolbarcontent/axisbehavior(_:)",
+      "skill_usage_correct": true,
+      "notes": "New."
+    },
+    {
+      "symbol": "View.toolbarVerticalCompressionBehavior(_:)",
+      "declaration": "nonisolated func toolbarVerticalCompressionBehavior(_ behavior: ToolbarVerticalCompressionBehavior) -> some View",
+      "availability": "iOS 27.1 (beta), iPadOS 27.1 (beta), Mac Catalyst 27.1, macOS 27.1, tvOS 27.1, visionOS 27.1, watchOS 27.1",
+      "members": "behavior",
+      "doc_url": "https://developer.apple.com/documentation/swiftui/view/toolbarverticalcompressionbehavior(_:)",
+      "skill_usage_correct": true,
+      "notes": "New. Example: .toolbarVerticalCompressionBehavior(.prefersToolbarItems)."
+    },
+    {
+      "symbol": "ToolbarVerticalCompressionBehavior",
+      "declaration": "struct ToolbarVerticalCompressionBehavior",
+      "availability": "iOS 27.1 (beta), iPadOS 27.1 (beta), Mac Catalyst 27.1, macOS 27.1, tvOS 27.1, visionOS 27.1, watchOS 27.1",
+      "members": "automatic, prefersTabBar, prefersToolbarItems",
+      "doc_url": "https://developer.apple.com/documentation/swiftui/toolbarverticalcompressionbehavior",
+      "skill_usage_correct": true,
+      "notes": "New."
+    },
+    {
+      "symbol": "ArrangementView",
+      "declaration": "nonisolated struct ArrangementView<Primary, Secondary> where Primary : View, Secondary : View",
+      "availability": "iOS 27.1 (beta), iPadOS 27.1 (beta), Mac Catalyst 27.1, macOS 27.1, tvOS 27.1, visionOS 27.1, watchOS 27.1",
+      "members": "init(primary:secondary:), init(_: ArrangementViewStyleConfiguration), arrangementViewStyle(_:)",
+      "doc_url": "https://developer.apple.com/documentation/swiftui/arrangementview",
+      "skill_usage_correct": true,
+      "notes": "New. Default style resolves to split."
+    },
+    {
+      "symbol": "ArrangementViewStyle",
+      "declaration": "@MainActor @preconcurrency protocol ArrangementViewStyle",
+      "availability": "iOS 27.1 (beta), iPadOS 27.1 (beta), Mac Catalyst 27.1, macOS 27.1, tvOS 27.1, visionOS 27.1, watchOS 27.1",
+      "members": "automatic, overlay, split, makeBody(configuration:), Body, Configuration, AutomaticArrangementViewStyle, OverlayArrangementViewStyle, SplitArrangementViewStyle",
+      "doc_url": "https://developer.apple.com/documentation/swiftui/arrangementviewstyle",
+      "skill_usage_correct": true,
+      "notes": "New."
+    },
+    {
+      "symbol": "ArrangementViewStyleConfiguration",
+      "declaration": "struct ArrangementViewStyleConfiguration",
+      "availability": "iOS 27.1 (beta), iPadOS 27.1 (beta), Mac Catalyst 27.1, macOS 27.1, tvOS 27.1, visionOS 27.1, watchOS 27.1",
+      "members": "Primary, Secondary, primary, secondary",
+      "doc_url": "https://developer.apple.com/documentation/swiftui/arrangementviewstyleconfiguration",
+      "skill_usage_correct": true,
+      "notes": "New."
+    },
+    {
+      "symbol": "SplitArrangementViewStyle.axes(_:)",
+      "declaration": "nonisolated func axes(_ axes: Axis.Set) -> SplitArrangementViewStyle",
+      "availability": "iOS 27.1 (beta), iPadOS 27.1 (beta), Mac Catalyst 27.1, macOS 27.1, tvOS 27.1, visionOS 27.1, watchOS 27.1",
+      "members": "axes",
+      "doc_url": "https://developer.apple.com/documentation/swiftui/splitarrangementviewstyle/axes(_:)",
+      "skill_usage_correct": true,
+      "notes": "Example: .arrangementViewStyle(.split.axes(.vertical))."
+    },
+    {
+      "symbol": "OverlayArrangementViewStyle.axes(_:)",
+      "declaration": "nonisolated func axes(_ axes: Axis.Set) -> OverlayArrangementViewStyle",
+      "availability": "iOS 27.1 (beta), iPadOS 27.1 (beta), Mac Catalyst 27.1, macOS 27.1, tvOS 27.1, visionOS 27.1, watchOS 27.1",
+      "members": "axes",
+      "doc_url": "https://developer.apple.com/documentation/swiftui/overlayarrangementviewstyle/axes(_:)",
+      "skill_usage_correct": true,
+      "notes": "New."
+    },
+    {
+      "symbol": "View.overlayArrangementEdge(_:)",
+      "declaration": "nonisolated func overlayArrangementEdge(_ edge: HorizontalEdge?) -> some View",
+      "availability": "iOS 27.1 (beta), iPadOS 27.1 (beta), Mac Catalyst 27.1, macOS 27.1, tvOS 27.1, visionOS 27.1, watchOS 27.1",
+      "members": "edge",
+      "doc_url": "https://developer.apple.com/documentation/swiftui/view/overlayarrangementedge(_:)",
+      "skill_usage_correct": true,
+      "notes": "New."
+    },
+    {
+      "symbol": "View.splitArrangementLayoutRatio(_:)",
+      "declaration": "nonisolated func splitArrangementLayoutRatio(_ ratio: CGFloat?) -> some View",
+      "availability": "iOS 27.1 (beta), iPadOS 27.1 (beta), Mac Catalyst 27.1, macOS 27.1, tvOS 27.1, visionOS 27.1, watchOS 27.1",
+      "members": "ratio",
+      "doc_url": "https://developer.apple.com/documentation/swiftui/view/splitarrangementlayoutratio(_:)",
+      "skill_usage_correct": true,
+      "notes": "New. A min/ideal/max overload also exists."
+    },
+    {
+      "symbol": "View.splitArrangementLayoutSize(minWidth:idealWidth:maxWidth:minHeight:idealHeight:maxHeight:)",
+      "declaration": "nonisolated func splitArrangementLayoutSize(minWidth: CGFloat? = nil, idealWidth: CGFloat? = nil, maxWidth: CGFloat? = nil, minHeight: CGFloat? = nil, idealHeight: CGFloat? = nil, maxHeight: CGFloat? = nil) -> some View",
+      "availability": "iOS 27.1 (beta), iPadOS 27.1 (beta), Mac Catalyst 27.1, macOS 27.1, tvOS 27.1, visionOS 27.1, watchOS 27.1",
+      "members": "minWidth, idealWidth, maxWidth, minHeight, idealHeight, maxHeight",
+      "doc_url": "https://developer.apple.com/documentation/swiftui/view/splitarrangementlayoutsize(minwidth:idealwidth:maxwidth:minheight:idealheight:maxheight:)",
+      "skill_usage_correct": true,
+      "notes": "New."
+    },
+    {
+      "symbol": "View.splitArrangementFixedLayoutSize(horizontal:vertical:)",
+      "declaration": "nonisolated func splitArrangementFixedLayoutSize(horizontal: Bool = true, vertical: Bool = true) -> some View",
+      "availability": "iOS 27.1 (beta), iPadOS 27.1 (beta), Mac Catalyst 27.1, macOS 27.1, tvOS 27.1, visionOS 27.1, watchOS 27.1",
+      "members": "horizontal, vertical",
+      "doc_url": "https://developer.apple.com/documentation/swiftui/view/splitarrangementfixedlayoutsize(horizontal:vertical:)",
+      "skill_usage_correct": true,
+      "notes": "New."
+    },
+    {
+      "symbol": "EnvironmentValues.splitArrangementAxis",
+      "declaration": "var splitArrangementAxis: Axis? { get set }",
+      "availability": "iOS 27.1 (beta), iPadOS 27.1 (beta), Mac Catalyst 27.1, macOS 27.1, tvOS 27.1, visionOS 27.1, watchOS 27.1",
+      "members": "",
+      "doc_url": "https://developer.apple.com/documentation/swiftui/environmentvalues/splitarrangementaxis",
+      "skill_usage_correct": true,
+      "notes": "New."
+    },
+    {
+      "symbol": "EnvironmentValues.overlayArrangementZIndex",
+      "declaration": "var overlayArrangementZIndex: Int { get set }",
+      "availability": "iOS 27.1 (beta), iPadOS 27.1 (beta), Mac Catalyst 27.1, macOS 27.1, tvOS 27.1, visionOS 27.1, watchOS 27.1",
+      "members": "",
+      "doc_url": "https://developer.apple.com/documentation/swiftui/environmentvalues/overlayarrangementzindex",
+      "skill_usage_correct": true,
+      "notes": "New."
+    },
+    {
+      "symbol": "ReservedRegion",
+      "declaration": "struct ReservedRegion",
+      "availability": "iOS 27.1 (beta), iPadOS 27.1 (beta), Mac Catalyst 27.1, macOS 27.1, tvOS 27.1, visionOS 27.1, watchOS 27.1",
+      "members": "id, ReservedRegion.ID, frame, isActive, kind, ReservedRegion.Kind, margins, ReservedRegion.QueryOptions",
+      "doc_url": "https://developer.apple.com/documentation/swiftui/reservedregion",
+      "skill_usage_correct": true,
+      "notes": "New."
+    },
+    {
+      "symbol": "GeometryProxy.reservedRegions(kind:options:layoutDirectionBehavior:)",
+      "declaration": "func reservedRegions(kind: ReservedRegion.Kind, options: ReservedRegion.QueryOptions = [], layoutDirectionBehavior: LayoutDirectionBehavior = .mirrors) -> [ReservedRegion]",
+      "availability": "iOS 27.1 (beta), iPadOS 27.1 (beta), Mac Catalyst 27.1, macOS 27.1, tvOS 27.1, visionOS 27.1, watchOS 27.1",
+      "members": "kind, options, layoutDirectionBehavior",
+      "doc_url": "https://developer.apple.com/documentation/swiftui/geometryproxy/reservedregions(kind:options:layoutdirectionbehavior:)",
+      "skill_usage_correct": true,
+      "notes": "New."
+    },
+    {
+      "symbol": "ReservedRegion.Kind",
+      "declaration": "struct Kind",
+      "availability": "iOS 27.1 (beta), iPadOS 27.1 (beta), Mac Catalyst 27.1, macOS 27.1, tvOS 27.1, visionOS 27.1, watchOS 27.1",
+      "members": "division, occlusion",
+      "doc_url": "https://developer.apple.com/documentation/swiftui/reservedregion/kind-swift.struct",
+      "skill_usage_correct": true,
+      "notes": "New."
+    },
+    {
+      "symbol": "ReservedRegion.QueryOptions",
+      "declaration": "@frozen struct QueryOptions",
+      "availability": "iOS 27.1 (beta), iPadOS 27.1 (beta), Mac Catalyst 27.1, macOS 27.1, tvOS 27.1, visionOS 27.1, watchOS 27.1",
+      "members": "includeInactive",
+      "doc_url": "https://developer.apple.com/documentation/swiftui/reservedregion/queryoptions",
+      "skill_usage_correct": true,
+      "notes": "New."
+    },
+    {
+      "symbol": "View.onHingeChange(isEnabled:_:)",
+      "declaration": "nonisolated func onHingeChange(isEnabled: Bool = true, _ action: @escaping (DeviceHingeContext, DeviceHingeContext) -> Void) -> some View",
+      "availability": "iOS 27.1 (beta), iPadOS 27.1 (beta), Mac Catalyst 27.1, macOS 27.1, tvOS 27.1, visionOS 27.1, watchOS 27.1",
+      "members": "isEnabled, action",
+      "doc_url": "https://developer.apple.com/documentation/swiftui/view/onhingechange(isenabled:_:)",
+      "skill_usage_correct": true,
+      "notes": "New (iPhone Duo)."
+    },
+    {
+      "symbol": "DeviceHinge",
+      "declaration": "struct DeviceHinge",
+      "availability": "iOS 27.1 (beta), iPadOS 27.1 (beta), Mac Catalyst 27.1, macOS 27.1, tvOS 27.1, visionOS 27.1, watchOS 27.1",
+      "members": "angle, status, DeviceHinge.Status",
+      "doc_url": "https://developer.apple.com/documentation/swiftui/devicehinge",
+      "skill_usage_correct": true,
+      "notes": "New."
+    },
+    {
+      "symbol": "DeviceHinge.Status",
+      "declaration": "struct Status",
+      "availability": "iOS 27.1 (beta), iPadOS 27.1 (beta), Mac Catalyst 27.1, macOS 27.1, tvOS 27.1, visionOS 27.1, watchOS 27.1",
+      "members": "closed, fullyOpen, partiallyOpen",
+      "doc_url": "https://developer.apple.com/documentation/swiftui/devicehinge/status-swift.struct",
+      "skill_usage_correct": true,
+      "notes": "New."
+    },
+    {
+      "symbol": "DeviceHingeContext",
+      "declaration": "struct DeviceHingeContext",
+      "availability": "iOS 27.1 (beta), iPadOS 27.1 (beta), Mac Catalyst 27.1, macOS 27.1, tvOS 27.1, visionOS 27.1, watchOS 27.1",
+      "members": "hinge",
+      "doc_url": "https://developer.apple.com/documentation/swiftui/devicehingecontext",
+      "skill_usage_correct": true,
+      "notes": "New."
+    },
+    {
+      "symbol": "CameraCaptureAccessory",
+      "declaration": "nonisolated struct CameraCaptureAccessory<Content> where Content : View",
+      "availability": "iOS 27.1 (beta), iPadOS 27.1 (beta)",
+      "members": "init(content:), init(isEnabled: Binding<Bool>, content:)",
+      "doc_url": "https://developer.apple.com/documentation/swiftui/cameracaptureaccessory",
+      "skill_usage_correct": true,
+      "notes": "New; out of scope for glass."
+    },
+    {
+      "symbol": "View.sceneAccessory(content:)",
+      "declaration": "nonisolated func sceneAccessory<C>(@ContentBuilder content: () -> C) -> some View where C : SceneAccessoryContent",
+      "availability": "iOS 27.0, iPadOS 27.0",
+      "members": "content",
+      "doc_url": "https://developer.apple.com/documentation/swiftui/view/sceneaccessory(content:)",
+      "skill_usage_correct": true,
+      "notes": "New and not on the Updates page; out of scope for glass."
+    },
+    {
+      "symbol": "ExternalNonInteractiveAccessory",
+      "declaration": "nonisolated struct ExternalNonInteractiveAccessory<Content> where Content : View",
+      "availability": "iOS 27.0, iPadOS 27.0",
+      "members": "init(content:), init(isEnabled:content:)",
+      "doc_url": "https://developer.apple.com/documentation/swiftui/externalnoninteractiveaccessory",
+      "skill_usage_correct": true,
+      "notes": "New; out of scope."
+    },
+    {
+      "symbol": "View.presentationPlacement(_:)",
+      "declaration": "nonisolated func presentationPlacement(_ placement: PresentationPlacement) -> some View",
+      "availability": "iOS 27.0, iPadOS 27.0, Mac Catalyst 27.0, macOS 27.0, tvOS 27.0, visionOS 27.0, watchOS 27.0",
+      "members": "placement",
+      "doc_url": "https://developer.apple.com/documentation/swiftui/view/presentationplacement(_:)",
+      "skill_usage_correct": true,
+      "notes": "New and not on the Updates page. Only sheets respect it."
+    },
+    {
+      "symbol": "PresentationPlacement",
+      "declaration": "struct PresentationPlacement",
+      "availability": "iOS 27.0, iPadOS 27.0, Mac Catalyst 27.0, macOS 27.0, tvOS 27.0, visionOS 27.0, watchOS 27.0",
+      "members": "automatic, center, leading, trailing",
+      "doc_url": "https://developer.apple.com/documentation/swiftui/presentationplacement",
+      "skill_usage_correct": true,
+      "notes": "New."
+    },
+    {
+      "symbol": "TabsPickerStyle",
+      "declaration": "struct TabsPickerStyle",
+      "availability": "iOS 27.0, iPadOS 27.0, Mac Catalyst 27.0, macOS 27.0, tvOS 27.0, visionOS 27.0",
+      "members": "init(); PickerStyle.tabs",
+      "doc_url": "https://developer.apple.com/documentation/swiftui/tabspickerstyle",
+      "skill_usage_correct": true,
+      "notes": "New and not on the Updates page. Looks like .segmented on iOS; VoiceOver reads it as tabs."
+    },
+    {
+      "symbol": "View.textInputBorderShape(_:)",
+      "declaration": "nonisolated func textInputBorderShape(_ shape: TextInputBorderShape) -> some View",
+      "availability": "iOS 27.0, iPadOS 27.0, Mac Catalyst 27.0, macOS 27.0, tvOS 27.0, visionOS 27.0, watchOS 27.0",
+      "members": "shape",
+      "doc_url": "https://developer.apple.com/documentation/swiftui/view/textinputbordershape(_:)",
+      "skill_usage_correct": true,
+      "notes": "New and not on the Updates page."
+    },
+    {
+      "symbol": "TextInputBorderShape",
+      "declaration": "struct TextInputBorderShape",
+      "availability": "iOS 27.0, iPadOS 27.0, Mac Catalyst 27.0, macOS 27.0, tvOS 27.0, visionOS 27.0, watchOS 27.0",
+      "members": "automatic, capsule, roundedRectangle",
+      "doc_url": "https://developer.apple.com/documentation/swiftui/textinputbordershape",
+      "skill_usage_correct": true,
+      "notes": "New."
+    },
+    {
+      "symbol": "TextFieldStyle.bordered",
+      "declaration": "@export(implementation) static var bordered: BorderedTextFieldStyle { get }",
+      "availability": "iOS 27.0, iPadOS 27.0, Mac Catalyst 27.0, macOS 27.0, tvOS 27.0, visionOS 27.0, watchOS 27.0",
+      "members": "",
+      "doc_url": "https://developer.apple.com/documentation/swiftui/textfieldstyle/bordered",
+      "skill_usage_correct": true,
+      "notes": "New."
+    },
+    {
+      "symbol": "TextFieldStyle.roundedBorder",
+      "declaration": "@export(implementation) static var roundedBorder: RoundedBorderTextFieldStyle { get }",
+      "availability": "iOS 13.0 (deprecatedAt 27.2), iPadOS 13.0 (deprecatedAt 27.2), Mac Catalyst 13.0 (deprecatedAt 27.2), macOS 10.15 (deprecatedAt 27.2), visionOS 1.0",
+      "members": "",
+      "doc_url": "https://developer.apple.com/documentation/swiftui/textfieldstyle/roundedborder",
+      "skill_usage_correct": true,
+      "notes": "Soft-deprecated: 'Use `textFieldStyle(.bordered)` with `textInputBorderShape(.roundedRectangle)`'. squareBorder is also deprecated. Not used by the skill."
+    },
+    {
+      "symbol": "GeometryProxy.concentricCornerRadii",
+      "declaration": "var concentricCornerRadii: RectangleCornerRadii? { get }",
+      "availability": "iOS 27.0, iPadOS 27.0, Mac Catalyst 27.0, macOS 27.0, tvOS 27.0, visionOS 27.0, watchOS 27.0",
+      "members": "",
+      "doc_url": "https://developer.apple.com/documentation/swiftui/geometryproxy/concentriccornerradii",
+      "skill_usage_correct": true,
+      "notes": "New and not on the Updates page (release notes 177185166)."
+    },
+    {
+      "symbol": "GeometryProxy.concentricCornerRadii(in:)",
+      "declaration": "func concentricCornerRadii(in frame: CGRect) -> RectangleCornerRadii?",
+      "availability": "iOS 27.0, iPadOS 27.0, Mac Catalyst 27.0, macOS 27.0, tvOS 27.0, visionOS 27.0, watchOS 27.0",
+      "members": "frame",
+      "doc_url": "https://developer.apple.com/documentation/swiftui/geometryproxy/concentriccornerradii(in:)",
+      "skill_usage_correct": true,
+      "notes": "New."
+    },
+    {
+      "symbol": "ConcentricRectangle",
+      "declaration": "struct ConcentricRectangle",
+      "availability": "iOS 26.0, iPadOS 26.0, Mac Catalyst 26.0, macOS 26.0, tvOS 26.0, visionOS 26.0, watchOS 26.0",
+      "members": "init(), init(corners:isUniform:), init(topLeadingCorner:topTrailingCorner:bottomLeadingCorner:bottomTrailingCorner:), init(uniformBottomCorners:topLeadingCorner:topTrailingCorner:), init(uniformLeadingCorners:topTrailingCorner:bottomTrailingCorner:), init(uniformLeadingCorners:uniformTrailingCorners:), init(uniformTopCorners:bottomLeadingCorner:bottomTrailingCorner:), init(uniformTopCorners:uniformBottomCorners:), init(uniformTrailingCorners:topLeadingCorner:bottomLeadingCorner:)",
+      "doc_url": "https://developer.apple.com/documentation/swiftui/concentricrectangle",
+      "skill_usage_correct": false,
+      "notes": "The skill never uses it and instead uses a nonexistent `.containerConcentric`."
+    },
+    {
+      "symbol": "Edge.Corner.Style",
+      "declaration": "struct Style",
+      "availability": "iOS 26.0, iPadOS 26.0, Mac Catalyst 26.0, macOS 26.0, tvOS 26.0, visionOS 26.0, watchOS 26.0",
+      "members": "concentric, concentric(minimum:), fixed(_:)",
+      "doc_url": "https://developer.apple.com/documentation/swiftui/edge/corner/style",
+      "skill_usage_correct": false,
+      "notes": "'containerConcentric' does not appear anywhere in it."
+    },
+    {
+      "symbol": ".containerConcentric",
+      "declaration": "NOT FOUND",
+      "availability": "",
+      "members": "",
+      "doc_url": "https://developer.apple.com/documentation/swiftui/concentricrectangle",
+      "skill_usage_correct": false,
+      "notes": "Used throughout the skill as .rect(cornerRadius: .containerConcentric); not found in the docs."
+    },
+    {
+      "symbol": "View.scrollExtensionMode(_:)",
+      "declaration": "NOT FOUND",
+      "availability": "",
+      "members": "",
+      "doc_url": "https://developer.apple.com/documentation/swiftui/view/scrollextensionmode(_:)",
+      "skill_usage_correct": false,
+      "notes": "404. Used at 01-api-reference.md:516-519."
+    },
+    {
+      "symbol": "SearchFieldPlacement.toolbarPrincipal",
+      "declaration": "static var toolbarPrincipal: SearchFieldPlacement { get }",
+      "availability": "iOS 15.0, iPadOS 15.0, Mac Catalyst 15.0, macOS 12.0, visionOS 1.0",
+      "members": "",
+      "doc_url": "https://developer.apple.com/documentation/swiftui/searchfieldplacement/toolbarprincipal",
+      "skill_usage_correct": true,
+      "notes": "In iOS 27, nav bars auto-minimize when searchable uses this placement (ToolbarMinimizationBehavior.automatic)."
+    },
+    {
+      "symbol": "SearchToolbarBehavior",
+      "declaration": "struct SearchToolbarBehavior",
+      "availability": "iOS 26.0, iPadOS 26.0, Mac Catalyst 26.0, macOS 26.0, tvOS 26.0, visionOS 26.0, watchOS 26.0",
+      "members": "automatic, minimize",
+      "doc_url": "https://developer.apple.com/documentation/swiftui/searchtoolbarbehavior",
+      "skill_usage_correct": true,
+      "notes": "The skill's .minimize is correct; Apple's own example misspells it as .minimized. No changes in 27."
+    },
+    {
+      "symbol": "View.searchToolbarBehavior(_:)",
+      "declaration": "nonisolated func searchToolbarBehavior(_ behavior: SearchToolbarBehavior) -> some View",
+      "availability": "iOS 26.0, iPadOS 26.0, Mac Catalyst 26.0, macOS 26.0, tvOS 26.0, visionOS 26.0, watchOS 26.0",
+      "members": "behavior",
+      "doc_url": "https://developer.apple.com/documentation/swiftui/view/searchtoolbarbehavior(_:)",
+      "skill_usage_correct": true,
+      "notes": "Unchanged."
+    },
+    {
+      "symbol": "ScrollEdgeEffectStyle",
+      "declaration": "struct ScrollEdgeEffectStyle",
+      "availability": "iOS 26.0, iPadOS 26.0, Mac Catalyst 26.0, macOS 26.0, tvOS 26.0, visionOS 26.0, watchOS 26.0",
+      "members": "automatic, hard, soft",
+      "doc_url": "https://developer.apple.com/documentation/swiftui/scrolledgeeffectstyle",
+      "skill_usage_correct": true,
+      "notes": "Unchanged in 27."
+    },
+    {
+      "symbol": "View.scrollEdgeEffectStyle(_:for:)",
+      "declaration": "nonisolated func scrollEdgeEffectStyle(_ style: ScrollEdgeEffectStyle?, for edges: Edge.Set) -> some View",
+      "availability": "iOS 26.0, iPadOS 26.0, Mac Catalyst 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0",
+      "members": "style, edges",
+      "doc_url": "https://developer.apple.com/documentation/swiftui/view/scrolledgeeffectstyle(_:for:)",
+      "skill_usage_correct": true,
+      "notes": "Unchanged."
+    },
+    {
+      "symbol": "View.scrollEdgeEffectHidden(_:for:)",
+      "declaration": "nonisolated func scrollEdgeEffectHidden(_ hidden: Bool = true, for edges: Edge.Set = .all) -> some View",
+      "availability": "iOS 26.0, iPadOS 26.0, Mac Catalyst 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0",
+      "members": "hidden, edges",
+      "doc_url": "https://developer.apple.com/documentation/swiftui/view/scrolledgeeffecthidden(_:for:)",
+      "skill_usage_correct": true,
+      "notes": "Unchanged."
+    },
+    {
+      "symbol": "View.safeAreaBar(edge:alignment:spacing:content:)",
+      "declaration": "nonisolated func safeAreaBar(edge: HorizontalEdge, alignment: VerticalAlignment = .center, spacing: CGFloat? = nil, @ContentBuilder content: () -> some View) -> some View",
+      "availability": "iOS 26.0, iPadOS 26.0, Mac Catalyst 26.0, macOS 26.0, tvOS 26.0, visionOS 26.0, watchOS 26.0",
+      "members": "edge, alignment, spacing, content (VerticalEdge overload also exists)",
+      "doc_url": "https://developer.apple.com/documentation/swiftui/view/safeareabar(edge:alignment:spacing:content:)",
+      "skill_usage_correct": true,
+      "notes": "26.1 known issue: @FocusState doesn't work in safeAreaBar. The skill uses safeAreaInset for floating glass toolbars; safeAreaBar also extends scroll edge effects."
+    },
+    {
+      "symbol": "View.backgroundExtensionEffect() / backgroundExtensionEffect(isEnabled:)",
+      "declaration": "@MainActor @preconcurrency func backgroundExtensionEffect() -> some View  |  @MainActor @preconcurrency func backgroundExtensionEffect(isEnabled: Bool) -> some View",
+      "availability": "iOS 26.0, iPadOS 26.0, Mac Catalyst 26.0, macOS 26.0, tvOS 26.0, visionOS 26.0, watchOS 26.0",
+      "members": "isEnabled",
+      "doc_url": "https://developer.apple.com/documentation/swiftui/view/backgroundextensioneffect()",
+      "skill_usage_correct": true,
+      "notes": "The isEnabled overload (26.0) is absent from the skill. Note: it clips the view."
+    },
+    {
+      "symbol": "View.swipeActions(edge:allowsFullSwipe:content:onPresentationChanged:)",
+      "declaration": "nonisolated func swipeActions(edge: HorizontalEdge = .trailing, allowsFullSwipe: Bool = true, @ContentBuilder content: () -> some View, onPresentationChanged: @escaping (Bool) -> Void) -> some View",
+      "availability": "iOS 27.0, iPadOS 27.0, Mac Catalyst 27.0, macOS 27.0, visionOS 27.0, watchOS 27.0",
+      "members": "edge, allowsFullSwipe, content, onPresentationChanged",
+      "doc_url": "https://developer.apple.com/documentation/swiftui/view/swipeactions(edge:allowsfullswipe:content:onpresentationchanged:)",
+      "skill_usage_correct": true,
+      "notes": "New."
+    },
+    {
+      "symbol": "View.swipeActionsContainer()",
+      "declaration": "nonisolated func swipeActionsContainer() -> some View",
+      "availability": "iOS 27.0, iPadOS 27.0, Mac Catalyst 27.0, macOS 27.0, visionOS 27.0, watchOS 27.0",
+      "members": "",
+      "doc_url": "https://developer.apple.com/documentation/swiftui/view/swipeactionscontainer()",
+      "skill_usage_correct": true,
+      "notes": "New. A no-op on List."
+    },
+    {
+      "symbol": "View.alert(_:item:actions:)",
+      "declaration": "@export(implementation) nonisolated func alert<A, T>(_ title: Text, item data: Binding<T?>, @ContentBuilder actions: (T) -> A) -> some View where A : View",
+      "availability": "iOS 15.0, iPadOS 15.0, Mac Catalyst 15.0, macOS 12.0, tvOS 15.0, visionOS 1.0, watchOS 8.0",
+      "members": "title, data, actions (plus alert(_:item:actions:message:), alert(error:actions:), alert(error:actions:message:))",
+      "doc_url": "https://developer.apple.com/documentation/swiftui/view/alert(_:item:actions:)",
+      "skill_usage_correct": true,
+      "notes": "New in the Xcode 27 SDK; back-deploys to iOS 15."
+    },
+    {
+      "symbol": "View.confirmationDialog(_:item:titleVisibility:actions:)",
+      "declaration": "@export(implementation) nonisolated func confirmationDialog<A, T>(_ title: Text, item data: Binding<T?>, titleVisibility: Visibility = .automatic, @ContentBuilder actions: (T) -> A) -> some View where A : View",
+      "availability": "iOS 15.0, iPadOS 15.0, Mac Catalyst 15.0, macOS 12.0, tvOS 15.0, visionOS 1.0, watchOS 8.0",
+      "members": "title, data, titleVisibility, actions (plus ...:message: overload)",
+      "doc_url": "https://developer.apple.com/documentation/swiftui/view/confirmationdialog(_:item:titlevisibility:actions:)",
+      "skill_usage_correct": true,
+      "notes": "New in the Xcode 27 SDK; back-deploys."
+    },
+    {
+      "symbol": "View.reorderContainer(for:isEnabled:move:)",
+      "declaration": "nonisolated func reorderContainer<Item>(for item: Item.Type, isEnabled: Bool = true, move: @escaping (ReorderDifference<Item.ID, ReorderableSingleCollectionIdentifier>) -> ()) -> some View where Item : Identifiable, Item.ID : Sendable",
+      "availability": "iOS 27.0, iPadOS 27.0, Mac Catalyst 27.0, macOS 27.0, visionOS 27.0, watchOS 27.0",
+      "members": "item, isEnabled, move",
+      "doc_url": "https://developer.apple.com/documentation/swiftui/view/reordercontainer(for:isenabled:move:)",
+      "skill_usage_correct": true,
+      "notes": "New; low relevance to glass."
+    },
+    {
+      "symbol": "DynamicViewContent.reorderable()",
+      "declaration": "nonisolated func reorderable() -> some DynamicViewContent<Self.Data>",
+      "availability": "iOS 27.0, iPadOS 27.0, Mac Catalyst 27.0, macOS 27.0, visionOS 27.0, watchOS 27.0",
+      "members": "",
+      "doc_url": "https://developer.apple.com/documentation/swiftui/dynamicviewcontent/reorderable()",
+      "skill_usage_correct": true,
+      "notes": "New; low relevance."
+    },
+    {
+      "symbol": "EnvironmentValues.appearsActive",
+      "declaration": "@backDeployed(before: macOS 15.0) var appearsActive: Bool { get set }",
+      "availability": "iOS 18.0, iPadOS 18.0, Mac Catalyst 18.0, macOS 10.15, tvOS 18.0, visionOS 2.0, watchOS 11.0",
+      "members": "",
+      "doc_url": "https://developer.apple.com/documentation/swiftui/environmentvalues/appearsactive",
+      "skill_usage_correct": true,
+      "notes": "The docs still say 'On all other platforms, this value is always true', but WWDC26 shows iPadOS 27 inactive-window dimming using appearsActive. Bridged to UITraitCollection.activeAppearance."
+    },
+    {
+      "symbol": "EnvironmentValues.buttonSizing",
+      "declaration": "var buttonSizing: ButtonSizing { get }",
+      "availability": "iOS 26.0, iPadOS 26.0, Mac Catalyst 26.0, macOS 26.0, tvOS 26.0, visionOS 26.0, watchOS 26.0",
+      "members": "ButtonSizing: flexible, fitted (from example)",
+      "doc_url": "https://developer.apple.com/documentation/swiftui/environmentvalues/buttonsizing",
+      "skill_usage_correct": true,
+      "notes": "Reset to default inside sheets and popovers with the 27 SDK, along with controlSize and ButtonBorderShape."
+    },
+    {
+      "symbol": "ButtonRole",
+      "declaration": "struct ButtonRole",
+      "availability": "iOS 15.0, iPadOS 15.0, Mac Catalyst 15.0, macOS 12.0, tvOS 15.0, visionOS 1.0, watchOS 8.0",
+      "members": "cancel, destructive, close, confirm",
+      "doc_url": "https://developer.apple.com/documentation/swiftui/buttonrole",
+      "skill_usage_correct": true,
+      "notes": "No 27 additions found. close and confirm are the iOS 26 roles."
+    }
+  ]
+}
