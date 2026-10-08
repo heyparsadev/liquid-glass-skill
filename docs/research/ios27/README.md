@@ -12,5 +12,7 @@ Findings marked by an agent are claims until a `verify:` file confirms them.
 | [swiftui-updates](swiftui-updates.md) | Research | done — 46 findings, 110 symbols |
 | [truth-glass-core](truth-glass-core.md) | Research | done — 43 findings, 40 symbols |
 | [truth-chrome](truth-chrome.md) | Research | done — 28 findings, 41 symbols |
-| design-platform | Research | running |
-| skill-authoring | Research | running |
+| [design-platform](design-platform.md) | Research | done — 35 findings, 15 symbols |
+| [skill-authoring](skill-authoring.md) | Research | done — 28 findings, 8 symbols |
+| audit-references | Audit | running |
+| audit-code | Audit | running |
