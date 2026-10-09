@@ -1,48 +1,48 @@
-# Pattern — Glass Modal Sheet
+# Pattern: glass sheet
 
 ## Problem
-A sheet that integrates with the iOS 26 design system: the grabber and surrounding chrome are glass (system-provided), content reads clearly through it, and presentation morphs from a source button.
+You want a sheet that fits the design system: the system glass background, correct Close, Cancel, and Done placement, sizing with detents, and a presentation that grows out of the control that opened it.
 
-## Solution — basic sheet
+## Solution: informational sheet
 
 ```swift
 struct ParentView: View {
     @State private var showInfo = false
+    @Namespace private var ns
 
     var body: some View {
-        ContentView()
-            .toolbar {
-                ToolbarItem {
-                    Button("Info", systemImage: "info.circle") {
-                        showInfo = true
+        NavigationStack {
+            ContentView()
+                .toolbar {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button("About", systemImage: "info.circle") { showInfo = true }
                     }
+                    .matchedTransitionSource(id: "info", in: ns)   // ToolbarContent version, iOS 26
                 }
-            }
-            .sheet(isPresented: $showInfo) {
-                InfoSheet()
-                    .presentationDetents([.medium, .large])
-            }
+                .sheet(isPresented: $showInfo) {
+                    InfoSheet()
+                        .presentationDetents([.medium, .large])
+                        .navigationTransition(.zoom(sourceID: "info", in: ns))
+                }
+        }
     }
 }
 
 struct InfoSheet: View {
-    @Environment(\.dismiss) var dismiss
+    @Environment(\.dismiss) private var dismiss
 
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 16) {
-                    Text("About this feature")
-                        .font(.title2.bold())
-                    Text("Long-form body text…")
-                        .foregroundStyle(.secondary)
+            List {
+                Section("About this feature") {
+                    Text("Long-form explanation…")
                 }
-                .padding()
             }
-            .scrollContentBackground(.hidden)
+            .scrollContentBackground(.hidden)              // List/Form only: lets the sheet's glass show
+            .navigationTitle("About")
             .toolbar {
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Done") { dismiss() }
+                ToolbarItem(placement: .cancellationAction) {
+                    Button(role: .close) { dismiss() }     // standard ✕ (iOS 26 default label)
                 }
             }
         }
@@ -50,50 +50,59 @@ struct InfoSheet: View {
 }
 ```
 
-The system gives you:
-- Glass grabber
-- Glass toolbar chrome
-- Adaptive corner radii for the sheet itself
+The system provides the Liquid Glass sheet background, inset from the edges at partial heights, along with the glass grabber, the toolbar, and corner radii. You provide the detents, the buttons, and the content.
 
-You give it:
-- `.presentationDetents` for sizing
-- `.scrollContentBackground(.hidden)` so glass shows through scrollables
+## Variation: task sheet (Cancel + Done)
 
-## Variations
+HIG Sheets (March 2026) says that for a single-view sheet, "the Cancel button belongs on the leading edge of the top toolbar", and Done belongs on the trailing edge. Always pair Done with Cancel, or with Back in multi-step sheets, and never show all three.
 
-### Morph from source button (zoom transition)
 ```swift
-@Namespace private var ns
-@State private var showSheet = false
-
-Button("Open", systemImage: "doc.text") { showSheet = true }
-    .matchedTransitionSource(id: "doc", in: ns)
-
-.sheet(isPresented: $showSheet) {
-    DocumentView()
-        .navigationTransition(.zoom(sourceID: "doc", in: ns))
+.toolbar {
+    ToolbarItem(placement: .cancellationAction) {
+        Button("Cancel", role: .cancel) { dismiss() }
+    }
+    ToolbarItem(placement: .confirmationAction) {
+        Button("Done") { save(); dismiss() }
+            .buttonStyle(.glassProminent)
+            .disabled(!isValid)
+    }
 }
 ```
 
-The button expands visually into the sheet — its glass morphs into the sheet's chrome glass.
+## Variation: interact with the content behind
 
-### Tall sheet that doesn't dim background
 ```swift
-.sheet(isPresented: $showSheet) {
-    Content()
-        .presentationDetents([.large])
-        .presentationBackground(.clear)         // glass shows full background
-        .presentationBackgroundInteraction(.enabled(upThrough: .medium))
+.sheet(isPresented: .constant(true)) {
+    PlaceDetail()
+        .presentationDetents([.height(220), .medium, .large])
+        .presentationBackgroundInteraction(.enabled(upThrough: .medium))   // .medium must be a detent
+        .interactiveDismissDisabled()
 }
 ```
 
-### Custom detent
+## iOS 27 variations
+
 ```swift
-.presentationDetents([.height(220), .medium, .large])
+// Fade in over the content instead of sliding up (not macOS)
+.sheet(isPresented: $showFilters) {
+    FiltersView()
+        .presentationDetents([.medium])
+        .navigationTransition(.crossFade)
+}
+
+// Dock the sheet to an edge in wide layouts. Only sheets respect it.
+.sheet(item: $place) { place in
+    PlaceDetail(place: place)
+        .presentationDetents([.medium, .large])
+        .presentationPlacement(.leading)
+}
 ```
+
+Both are iOS 27.0+. Gate them on a 26 target ([10 § 3](../references/10-migrating-to-ios27.md#3-gating-ios-27-apis)).
 
 ## Gotchas
-
-- Don't apply `.glassEffect()` to the sheet's root view. The system already handles sheet chrome glass; an extra layer creates glass-on-glass.
-- `.containerBackground(.clear, for: .navigation)` lets the nav-bar glass blend with the sheet's glass behind it.
-- For a fully opaque sheet (settings form), skip `.scrollContentBackground(.hidden)` — `Form` looks better with its default backing.
+- **Never add `.glassEffect()` to the sheet's root, and never set `.presentationBackground(…)`.** Both replace or stack on the system glass.
+- **`.scrollContentBackground(.hidden)`** only affects `List`, `Form`, and other views with a system background. A plain `ScrollView` has none. For a settings-style sheet, keep the `Form`'s default backing.
+- **iOS 27 SDK.** `controlSize`, `buttonSizing`, and `ButtonBorderShape` reset inside sheets and popovers. Set them on the controls inside the sheet, not on the presenting view.
+- **Dialogs.** Attach `.confirmationDialog` to the button that triggers it, so it morphs out of that button.
+- **Zoom transitions.** For a toolbar source, attach `matchedTransitionSource` to the `ToolbarItem`, not to the `Button` inside. For an ordinary button, the `View` version works.

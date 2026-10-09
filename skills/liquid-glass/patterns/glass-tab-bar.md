@@ -1,9 +1,9 @@
-# Pattern — Glass Tab Bar
+# Pattern: glass tab bar
 
 ## Problem
-A tab bar that floats above content as a glass slab, collapses on scroll, and supports a persistent bottom accessory (Now Playing strip, mini-player).
+You want a tab bar that floats above content as glass, includes system search, can minimize on scroll, and can carry a persistent accessory such as a mini player.
 
-## Solution
+## Solution (iOS 26)
 
 ```swift
 struct AppShell: View {
@@ -17,71 +17,79 @@ struct AppShell: View {
             Tab("Library", systemImage: "books.vertical") {
                 NavigationStack { LibraryView() }
             }
-            Tab("Search", systemImage: "magnifyingglass", role: .search) {
+            Tab(role: .search) {                         // system label, trailing position
                 NavigationStack { SearchView() }
             }
-            Tab("Profile", systemImage: "person.crop.circle") {
-                NavigationStack { ProfileView() }
-            }
         }
-        .searchable(text: $query)
-        .tabBarMinimizeBehavior(.onScrollDown)
+        .searchable(text: $query)                        // on the TabView
+        .tabBarMinimizeBehavior(.onScrollDown)           // iPhone only
+        .tabViewStyle(.sidebarAdaptable)                 // sidebar on iPad and Mac
     }
 }
 ```
 
-## Variations
+- **Search tab.** On iPhone, selecting it makes "a search field take the place of the tab bar". On iPad and Mac the field "appears centered above your app's browsing suggestions". The system separates the search tab and places it at the trailing end.
+- **Minimize behavior.** `TabBarMinimizeBehavior` has `.automatic`, `.never`, `.onScrollDown`, and `.onScrollUp`. "Minimizing is supported for tab bars on only iPhone." It follows the scroll view in the selected tab.
 
-### Persistent bottom accessory (Now Playing)
+## Variation: persistent bottom accessory
+
 ```swift
-TabView { /* tabs */ }
+TabView { … }
     .tabBarMinimizeBehavior(.onScrollDown)
-    .tabViewBottomAccessory {
-        NowPlayingStrip()
+    .tabViewBottomAccessory {                            // iOS, iPadOS, Mac Catalyst
+        NowPlayingBar()
     }
-```
 
-Inside the accessory, react to whether it's expanded or collapsed:
-
-```swift
-struct NowPlayingStrip: View {
-    @Environment(\.tabViewBottomAccessoryPlacement) var placement
+struct NowPlayingBar: View {
+    @Environment(\.tabViewBottomAccessoryPlacement) private var placement   // Optional
 
     var body: some View {
-        HStack {
-            Image("artwork").resizable().frame(width: 32, height: 32)
-                .clipShape(RoundedRectangle(cornerRadius: 6))
-            if placement == .expanded {
+        HStack(spacing: 12) {
+            RoundedRectangle(cornerRadius: 6).fill(.tint).frame(width: 32, height: 32)
+            if placement == .expanded {                  // .inline: shares the row with the minimized tab bar
                 VStack(alignment: .leading) {
-                    Text("Track name").bold()
+                    Text("Track title").font(.subheadline.weight(.semibold))
                     Text("Artist").font(.caption).foregroundStyle(.secondary)
                 }
+                .lineLimit(1)
             }
             Spacer()
-            Button(action: {}) { Image(systemName: "play.fill") }
-                .buttonStyle(.glass)
-                .buttonBorderShape(.circle)
+            Button("Play", systemImage: "play.fill") { }
+                .labelStyle(.iconOnly)                   // plain: the accessory is already glass
         }
         .padding(.horizontal)
     }
 }
 ```
 
-### Force tab bar to stay full size
-```swift
-.tabBarMinimizeBehavior(.never)
-```
+- `TabViewBottomAccessoryPlacement` has two cases: `.expanded` ("expanded on top of the bottom tab bar") and `.inline` ("in line with the bottom tab bar"). There is no `.collapsed`.
+- **iOS 26.1+.** `tabViewBottomAccessory(isEnabled: player.hasItem) { … }` shows and hides the accessory without wrapping it in an `if`.
 
-### Hide tab bar within a deep navigation
+## iOS 27 variation: a prominent tab
+
 ```swift
-NavigationStack {
-    HomeView()
-        .toolbar(.hidden, for: .tabBar)   // hides only within this stack
+TabView {
+    Tab("Shop", systemImage: "bag") { ShopView() }
+    Tab("Orders", systemImage: "shippingbox") { OrdersView() }
+    Tab("Cart", systemImage: "cart", role: cartRole) { CartView() }   // separate, trailing
+}
+
+private var cartRole: TabRole? {                         // gate for a 26.0 target
+    if #available(iOS 27.0, *) { return .prominent }
+    return nil
 }
 ```
 
-## Gotchas
+- Only one tab can be prominent.
+- Without an explicit `.prominent`, a `.search` tab "may receive the prominent visual treatment by default".
+- Use a prominent tab instead of a floating glass button that imitates a separate tab.
 
-- The `role: .search` tab is special: it surfaces the system search field at the top of the screen automatically. Don't put a custom search field inside it.
-- `.tabBarMinimizeBehavior(.onScrollDown)` only works inside a tab whose root is a scrollable view (`ScrollView`, `List`, etc.).
-- `.tabViewBottomAccessory` must be applied to the `TabView` itself, not to a child.
+## iPhone Duo (iOS 27.1)
+The tab bar moves to a vertical bar at the side, except on the inner display in portrait. Keep the default placement. `.toolbarVerticalBehavior(.disabled)` (27.1, beta) exists for the cases Apple lists, such as full-screen video.
+
+## Gotchas
+- Don't put a custom search field inside the `.search` tab. Put `.searchable` on the `TabView`.
+- Apply `.tabViewBottomAccessory` to the `TabView` itself.
+- Controls inside the accessory use plain styles. `.buttonStyle(.glass)` there would be glass on glass.
+- To hide the tab bar inside a stack, use `.toolbarVisibility(.hidden, for: .tabBar)`. The older `.toolbar(.hidden, for: .tabBar)` is deprecated as of 27.2.
+- **iOS 27 SDK.** Never bind `TabView(selection:)` to a tab that is hidden or conditional. Apple says it "might crash".
