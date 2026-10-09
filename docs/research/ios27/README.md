@@ -33,5 +33,6 @@ Findings marked by an agent are claims until a `verify:` file confirms them.
 | [verify:truth-chrome#2](verify-truth-chrome-2.md) | Verify | done — 5 confirmed, 1 partially |
 | [verify:truth-chrome#3](verify-truth-chrome-3.md) | Verify | done — 5 confirmed, 1 partially |
 | [verify:truth-chrome#4](verify-truth-chrome-4.md) | Verify | done — 3 confirmed, 1 partially |
-| verify:skill-authoring#1 | Verify | running |
+| [verify:skill-authoring#1](verify-skill-authoring-1.md) | Verify | done — 5 confirmed |
 | verify:design-platform#1 | Verify | running |
+| verify:design-platform#2 | Verify | running |
