@@ -36,5 +36,15 @@ Findings marked by an agent are claims until a `verify:` file confirms them.
 | [verify:skill-authoring#1](verify-skill-authoring-1.md) | Verify | done — 5 confirmed |
 | [verify:design-platform#1](verify-design-platform-1.md) | Verify | done — 4 confirmed, 2 partially |
 | [verify:design-platform#2](verify-design-platform-2.md) | Verify | done — 4 confirmed, 1 partially, 1 refuted |
-| verify:design-platform#3 | Verify | running |
-| verify:design-platform#4 | Verify | running |
+| [verify:design-platform#3](verify-design-platform-3.md) | Verify | done — 5 confirmed, 1 partially |
+| [verify:design-platform#4](verify-design-platform-4.md) | Verify | done — 5 confirmed, 1 partially |
+| [verify:design-platform#5](verify-design-platform-5.md) | Verify | done — 3 confirmed, 1 partially |
+| [verify:audit-references#1](verify-audit-references-1.md) | Verify | done — 5 confirmed, 1 partially |
+| [verify:audit-references#2](verify-audit-references-2.md) | Verify | done — 6 confirmed |
+| [verify:audit-references#3](verify-audit-references-3.md) | Verify | done — 5 confirmed, 1 partially |
+| [verify:audit-references#4](verify-audit-references-4.md) | Verify | done — 5 confirmed, 1 partially |
+| [verify:audit-references#5](verify-audit-references-5.md) | Verify | done — 6 confirmed |
+| [verify:audit-code#1](verify-audit-code-1.md) | Verify | done — 5 confirmed, 1 partially |
+| [verify:audit-code#2](verify-audit-code-2.md) | Verify | done — 5 confirmed, 1 partially |
+| [verify:audit-code#3](verify-audit-code-3.md) | Verify | done — 5 confirmed, 1 partially |
+| [verify:audit-code#4](verify-audit-code-4.md) | Verify | done — 5 confirmed, 1 partially |
