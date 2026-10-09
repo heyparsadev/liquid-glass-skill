@@ -20,7 +20,7 @@ This skill covers the API, the system chrome that already uses glass, the iOS 27
 - **In scope.** SwiftUI on iOS, iPadOS, Mac Catalyst, macOS, tvOS, and watchOS 26 and later, built with Xcode 26 or later. The iOS 27 APIs need Xcode 27.
 - **visionOS.** `Glass`, `glassEffect`, `GlassEffectContainer`, and the glass button styles are not available there. visionOS uses its own system glass and `glassBackgroundEffect`.
 - **Out of scope.** UIKit and AppKit (`UIGlassEffect`, `NSGlassEffectView`), React Native, Flutter, and app icons (made in Icon Composer).
-- **Deployment targets below 26.** System components still get Liquid Glass when built with the 26 or 27 SDK. Custom glass needs `if #available(iOS 26.0, *)`. See [references/10-migrating-to-ios27.md](references/10-migrating-to-ios27.md#deployment-targets-below-26).
+- **Deployment targets below 26.** System components still get Liquid Glass when built with the 26 or 27 SDK. Custom glass needs `if #available(iOS 26.0, *)`. See [references/10-migrating-to-ios27.md](references/10-migrating-to-ios27.md#6-deployment-targets-below-26).
 
 ## Workflow
 

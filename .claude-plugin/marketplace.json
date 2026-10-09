@@ -5,15 +5,15 @@
     "email": "kzn.parsa@icloud.com",
     "url": "https://github.com/heyparsadev"
   },
-  "description": "iOS 26 Liquid Glass tooling for Claude Code.",
+  "description": "Liquid Glass tooling for Claude Code: SwiftUI on iOS 26 and iOS 27.",
   "plugins": [
     {
       "name": "liquid-glass",
       "source": "./",
-      "description": "Comprehensive iOS 26 Liquid Glass SwiftUI design skill — API reference, HIG, patterns, examples, accessibility, performance, anti-patterns.",
-      "version": "1.0.0",
+      "description": "Liquid Glass SwiftUI skill for iOS 26 and iOS 27: verified API reference, system chrome with the iOS 27 toolbar and tab APIs, HIG, accessibility, performance, anti-patterns, patterns, ten examples, and a linter.",
+      "version": "2.0.0",
       "category": "design",
-      "tags": ["ios26", "swiftui", "liquid-glass", "design-system", "apple"]
+      "tags": ["ios26", "ios27", "swiftui", "liquid-glass", "design-system", "apple", "xcode27"]
     }
   ]
 }

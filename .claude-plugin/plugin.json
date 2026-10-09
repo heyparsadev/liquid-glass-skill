@@ -1,7 +1,7 @@
 {
   "name": "liquid-glass",
-  "version": "1.0.0",
-  "description": "Comprehensive iOS 26 Liquid Glass design system for SwiftUI. Provides API reference, HIG principles, design tokens, motion patterns, accessibility guidance, performance rules, anti-patterns, a pattern library for every common surface, and nine full-screen example apps that compile in Xcode 26.",
+  "version": "2.0.0",
+  "description": "Liquid Glass for SwiftUI on iOS 26 and iOS 27: an API reference verified against Apple's docs, system chrome (toolbars, tab bars, search, sheets) including the iOS 27 APIs and how to gate them, HIG rules, accessibility, performance, anti-patterns, patterns, ten example screens, and a linter that catches invented APIs.",
   "author": {
     "name": "heyparsadev",
     "email": "kzn.parsa@icloud.com",
@@ -13,12 +13,21 @@
   "keywords": [
     "ios",
     "ios26",
+    "ios27",
+    "ipados",
+    "macos",
+    "watchos",
+    "tvos",
     "swiftui",
     "liquid-glass",
+    "glasseffect",
+    "xcode27",
+    "wwdc26",
+    "toolbar",
+    "tabview",
     "apple",
     "design-system",
     "hig",
-    "ui",
     "skill"
   ]
 }
