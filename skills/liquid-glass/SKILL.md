@@ -138,18 +138,18 @@ Details are in [references/09-whats-new-ios27.md](references/09-whats-new-ios27.
 
 | File | Screen | Key APIs | Min OS |
 |---|---|---|---|
-| [examples/01-SettingsScreen.swift](examples/01-SettingsScreen.swift) | Settings list | `.searchable` + `.searchToolbarBehavior(.minimize)`, dialog anchored to its button | 26 |
-| [examples/02-MusicPlayerScreen.swift](examples/02-MusicPlayerScreen.swift) | Now Playing | `.clear` glass over artwork with dimming, morphing transport controls | 26 |
-| [examples/03-OnboardingFlow.swift](examples/03-OnboardingFlow.swift) | Onboarding | Page dots that morph, prominent CTA over a gradient | 26 |
-| [examples/04-PhotoDetailScreen.swift](examples/04-PhotoDetailScreen.swift) | Photo viewer | Floating close button, expanding edit menu, `.materialize` | 26 |
-| [examples/05-DashboardScreen.swift](examples/05-DashboardScreen.swift) | Health dashboard | Content cards (no glass), bottom-bar search, toolbar | 26 |
-| [examples/06-ChatScreen.swift](examples/06-ChatScreen.swift) | Chat | Glass composer bar in `safeAreaBar`, scroll-to-bottom button | 26 |
-| [examples/07-ProfileScreen.swift](examples/07-ProfileScreen.swift) | Profile | Morphing segmented switcher, zoom sheet from toolbar | 26 |
-| [examples/08-LoginScreen.swift](examples/08-LoginScreen.swift) | Sign in | Glass controls over an animated backdrop, Sign in with Apple | 26 |
-| [examples/09-HealthTodayScreen.swift](examples/09-HealthTodayScreen.swift) | App shell | `TabView`, bottom accessory, floating action menu, content cards | 26 |
-| [examples/10-InboxScreen.swift](examples/10-InboxScreen.swift) | Mail inbox | iOS 27: nav bar minimization, overflow menu, pinned item, prominent tab, cross-fade sheet | 27 |
+| [examples/01-SettingsScreen.swift](examples/01-SettingsScreen.swift) | Settings list | `.searchable` + `.searchToolbarBehavior(.minimize)`, a destructive row with its dialog attached to the button | 26 |
+| [examples/02-MusicPlayerScreen.swift](examples/02-MusicPlayerScreen.swift) | Now Playing | `.clear` glass over artwork with a dimming layer, transport controls in one container | 26 |
+| [examples/03-OnboardingFlow.swift](examples/03-OnboardingFlow.swift) | Onboarding | Glass page dots that resize and blend, prominent CTA, Reduce Motion-aware transitions | 26 |
+| [examples/04-PhotoDetailScreen.swift](examples/04-PhotoDetailScreen.swift) | Photo viewer | Floating glass toolbar whose extra tools morph in (matchedGeometry), close button | 26 |
+| [examples/05-DashboardScreen.swift](examples/05-DashboardScreen.swift) | Health dashboard | Content cards (no glass), quick actions plus `DefaultToolbarItem` search in the bottom toolbar | 26 |
+| [examples/06-ChatScreen.swift](examples/06-ChatScreen.swift) | Chat | Morphing glass composer in `safeAreaInset` (the `@FocusState` issue rules out `safeAreaBar`) | 26 |
+| [examples/07-ProfileScreen.swift](examples/07-ProfileScreen.swift) | Profile | Cover under the glass bar, prominent Follow button, `Picker` with `.tabs` (27, gated), zoom sheet from a `ToolbarItem` | 26 |
+| [examples/08-LoginScreen.swift](examples/08-LoginScreen.swift) | Sign in | Real `NavigationStack` chrome, custom glass segmented switcher, material fields, `SignInWithAppleButton`, `safeAreaBar` | 26 |
+| [examples/09-HealthTodayScreen.swift](examples/09-HealthTodayScreen.swift) | App shell | `TabView` + search tab + accessory (`.expanded`/`.inline`), floating action menu, material cards, iOS 27 nav bar minimization (gated) | 26 |
+| [examples/10-StoreScreen.swift](examples/10-StoreScreen.swift) | Store shell | iOS 27: prominent tab, `toolbarMinimizationBehavior`, `.topBarPinnedTrailing`, `visibilityPriority`, `toolbarOverflowMenu`, cross-fade sheet | 27 |
 
-Every example marks which views are content layer and which are functional layer. They are written to build in the [Gallery](../../Gallery) host app (`cd Gallery && xcodegen generate`).
+Every example marks which views are content layer and which are functional layer. They're written for the [Gallery](../../Gallery) host app, which needs Xcode 27 (`cd Gallery && xcodegen generate`), and they pass `scripts/check_glass.py --target 26.0` with no errors.
 
 ### Scripts
 

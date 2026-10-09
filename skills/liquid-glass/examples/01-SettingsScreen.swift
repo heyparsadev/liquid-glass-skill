@@ -1,8 +1,13 @@
 // SettingsScreen.swift
-// iOS 26 Liquid Glass example — a Settings-style list with grouped sections,
-// a glass primary CTA at the bottom, and a search field that minimizes.
+// Liquid Glass example: a Settings-style list.
 //
-// Requires: Xcode 26+, iOS 26+.
+// Functional layer (glass, all system-provided): the navigation bar, the
+// toolbar button, and the search field, which minimizes into the toolbar.
+// Content layer (no glass): the grouped list. Sign Out is a standard
+// destructive row, not a prominent primary (HIG Buttons). Its confirmation
+// dialog is attached to the button so it morphs out of it.
+//
+// Requires: Xcode 26 or later, iOS 26 or later.
 
 import SwiftUI
 
@@ -21,7 +26,7 @@ struct SettingsScreen: View {
         NavigationStack {
             List {
                 Section("Account") {
-                    LabeledContent("Apple ID", value: "kzn.parsa@icloud.com")
+                    LabeledContent("Apple Account", value: "appleseed@example.com")
                     NavigationLink("Subscriptions") { Text("Subscriptions") }
                     NavigationLink("Payment & Shipping") { Text("Payment") }
                 }
@@ -47,12 +52,12 @@ struct SettingsScreen: View {
                         showSignOut = true
                     } label: {
                         Label("Sign Out", systemImage: "rectangle.portrait.and.arrow.right")
-                            .frame(maxWidth: .infinity)
                     }
-                    .buttonStyle(.glassProminent)
-                    .controlSize(.large)
-                    .tint(.red)
-                    .listRowBackground(Color.clear)
+                    // Attached to the button, so the dialog morphs out of it.
+                    .confirmationDialog("Sign out of this account?", isPresented: $showSignOut, titleVisibility: .visible) {
+                        Button("Sign Out", role: .destructive) { }
+                        Button("Cancel", role: .cancel) { }
+                    }
                 }
             }
             .navigationTitle("Settings")
@@ -62,10 +67,6 @@ struct SettingsScreen: View {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Profile", systemImage: "person.crop.circle") { }
                 }
-            }
-            .confirmationDialog("Sign out of this account?", isPresented: $showSignOut, titleVisibility: .visible) {
-                Button("Sign Out", role: .destructive) { }
-                Button("Cancel", role: .cancel) { }
             }
         }
     }

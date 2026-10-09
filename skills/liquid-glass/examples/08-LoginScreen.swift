@@ -1,20 +1,26 @@
 // LoginScreen.swift
-// iOS 26 Liquid Glass example — a showcase login screen.
+// Liquid Glass example: a sign-in screen over a vivid backdrop.
 //
-// Demonstrates:
-//  • Vivid mesh-gradient backdrop (so glass actually lenses something)
-//  • Glass nav bar with title + close button (visible chrome)
-//  • Glass segmented switcher (Sign In / Sign Up) morphing between states
-//  • Glass text fields with leading icons + show/hide toggle
-//  • Glass "Forgot password?" pill and Remember-me toggle
-//  • .glassProminent primary CTA with full-width capsule
-//  • Container-grouped glass social buttons (Apple / Google / Email) that
-//    blend together
-//  • Floating glass help bar pinned at the bottom via safeAreaInset
+// Functional layer (glass):
+//  • The navigation bar with Close and Help items: a real NavigationStack, not
+//    a hand-built glass HStack.
+//  • The Sign In / Sign Up switcher. It's a custom glass control: the selected
+//    segment is prominent, and the segments blend inside one container.
+//    `.glass` and `.glassProminent` are different concrete types, so each
+//    segment branches on the whole button rather than a ternary. For a
+//    standard look, a Picker with .segmented (or .tabs on iOS 27) is simpler.
+//  • The primary CTA (.glassProminent): the one primary action.
+//  • The Google / Email buttons and the floating help bar, each cluster in
+//    one GlassEffectContainer.
+// Content layer (no glass): the backdrop, the hero, and the form fields
+// (standard material).
+// Sign in with Apple uses Apple's SignInWithAppleButton. The HIG doesn't allow
+// a custom Apple-logo button, and the button's background must be black or white.
 //
-// Requires: Xcode 26+, iOS 26+.
+// Requires: Xcode 26 or later, iOS 26 or later.
 
 import SwiftUI
+import AuthenticationServices
 
 struct LoginScreen: View {
     enum Mode: String, CaseIterable, Identifiable {
@@ -33,151 +39,111 @@ struct LoginScreen: View {
 
     @FocusState private var focused: Field?
     @Namespace private var ns
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     enum Field { case email, password, confirm }
 
     var body: some View {
-        ZStack {
-            // ── Content layer: vivid backdrop (gives glass things to refract)
-            backdrop.ignoresSafeArea()
+        NavigationStack {
+            ScrollView {
+                VStack(spacing: 24) {
+                    hero
+                        .padding(.top, 8)
 
-            VStack(spacing: 0) {
-                // ── Glass nav bar (visible chrome)
-                topBar
-                    .padding(.horizontal)
-                    .padding(.top, 8)
-
-                ScrollView {
-                    VStack(spacing: 24) {
-                        hero
-                            .padding(.top, 24)
-
-                        // Mode switcher — morphs between Sign In / Sign Up
-                        segmentedSwitcher
-                            .padding(.horizontal, 24)
-
-                        // Form
-                        VStack(spacing: 14) {
-                            field(
-                                "envelope.fill",
-                                placeholder: "Email",
-                                text: $email,
-                                focus: .email,
-                                keyboard: .emailAddress,
-                                content: .username
-                            )
-
-                            secureField(
-                                "lock.fill",
-                                placeholder: "Password",
-                                text: $password,
-                                focus: .password
-                            )
-
-                            if mode == .signUp {
-                                secureField(
-                                    "lock.shield.fill",
-                                    placeholder: "Confirm password",
-                                    text: $confirm,
-                                    focus: .confirm
-                                )
-                                .transition(.move(edge: .top).combined(with: .opacity))
-                            }
-                        }
+                    segmentedSwitcher
                         .padding(.horizontal, 24)
 
-                        // Helper row — Remember me + Forgot password
-                        if mode == .signIn {
-                            helperRow
-                                .padding(.horizontal, 24)
-                                .transition(.opacity)
+                    // Form: content layer, so the fields use a standard material
+                    VStack(spacing: 14) {
+                        field(
+                            "envelope.fill",
+                            placeholder: "Email",
+                            text: $email,
+                            focus: .email,
+                            keyboard: .emailAddress,
+                            content: .username
+                        )
+
+                        secureField(
+                            "lock.fill",
+                            placeholder: "Password",
+                            text: $password,
+                            focus: .password
+                        )
+
+                        if mode == .signUp {
+                            secureField(
+                                "lock.shield.fill",
+                                placeholder: "Confirm password",
+                                text: $confirm,
+                                focus: .confirm
+                            )
+                            .transition(confirmFieldTransition)
                         }
+                    }
+                    .padding(.horizontal, 24)
 
-                        // Primary CTA
-                        primaryButton
+                    if mode == .signIn {
+                        helperRow
                             .padding(.horizontal, 24)
-                            .padding(.top, 4)
+                            .transition(.opacity)
+                    }
 
-                        // Divider with label
-                        dividerLabel
-                            .padding(.horizontal, 24)
-                            .padding(.top, 8)
+                    primaryButton
+                        .padding(.horizontal, 24)
+                        .padding(.top, 4)
 
-                        // Social cluster
-                        socialCluster
-                            .padding(.horizontal, 24)
+                    dividerLabel
+                        .padding(.horizontal, 24)
+                        .padding(.top, 8)
 
-                        // Footer
-                        footer
-                            .padding(.top, 4)
-                            .padding(.bottom, 80) // breathing room for floating help bar
+                    socialOptions
+                        .padding(.horizontal, 24)
+
+                    footer
+                        .padding(.top, 4)
+                        .padding(.bottom, 24)
+                }
+            }
+            .scrollIndicators(.hidden)
+            .background {
+                backdrop.ignoresSafeArea()               // content scrolls under the glass bar
+            }
+            .navigationTitle("Welcome")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button(role: .close) { }                // standard ✕ (iOS 26)
+                }
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Help", systemImage: showHelp ? "xmark" : "questionmark") {
+                        withAnimation(switchAnimation) { showHelp.toggle() }
                     }
                 }
-                .scrollIndicators(.hidden)
             }
-
-            // Help bar floats over everything
-            VStack {
-                Spacer()
+            .safeAreaBar(edge: .bottom) {                   // a custom bar that joins the scroll edge effect
                 if showHelp {
                     helpBar
                         .padding(.horizontal)
-                        .padding(.bottom, 12)
-                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                        .padding(.bottom, 8)
                 }
             }
         }
         .preferredColorScheme(.dark)
-        .animation(.bouncy, value: mode)
-        .animation(.bouncy, value: showHelp)
+        .animation(switchAnimation, value: mode)
     }
 
-    // MARK: - Top bar (glass nav)
-
-    private var topBar: some View {
-        GlassEffectContainer(spacing: 12) {
-            HStack(spacing: 12) {
-                Button {
-                    // dismiss
-                } label: {
-                    Image(systemName: "chevron.left")
-                        .font(.body.weight(.semibold))
-                        .frame(width: 40, height: 40)
-                }
-                .buttonStyle(.glass)
-                .buttonBorderShape(.circle)
-                .tint(.white)
-                .glassEffectID("back", in: ns)
-
-                Spacer()
-
-                Text("Welcome")
-                    .font(.headline)
-                    .foregroundStyle(.white)
-                    .padding(.horizontal, 18)
-                    .padding(.vertical, 10)
-                    .glassEffect(.regular, in: .capsule)
-                    .glassEffectID("title", in: ns)
-
-                Spacer()
-
-                Button {
-                    withAnimation(.bouncy) { showHelp.toggle() }
-                } label: {
-                    Image(systemName: showHelp ? "xmark" : "questionmark")
-                        .font(.body.weight(.semibold))
-                        .frame(width: 40, height: 40)
-                        .contentTransition(.symbolEffect(.replace))
-                }
-                .buttonStyle(.glass)
-                .buttonBorderShape(.circle)
-                .tint(.white)
-                .glassEffectID("help", in: ns)
-            }
-        }
+    private var switchAnimation: Animation {
+        reduceMotion ? .smooth : .bouncy
     }
 
-    // MARK: - Hero
+    // The field isn't glass, so an ordinary transition is fine. Under Reduce
+    // Motion it fades instead of sliding.
+    private var confirmFieldTransition: AnyTransition {
+        reduceMotion ? .opacity : .move(edge: .top).combined(with: .opacity)
+    }
+
+    // MARK: - Hero (content)
 
     private var hero: some View {
         VStack(spacing: 14) {
@@ -185,7 +151,8 @@ struct LoginScreen: View {
                 .font(.system(size: 44, weight: .light))
                 .foregroundStyle(.white)
                 .frame(width: 96, height: 96)
-                .glassEffect(.regular.tint(.white.opacity(0.15)), in: .circle)
+                .background(.ultraThinMaterial, in: .circle)
+                .accessibilityHidden(true)
 
             VStack(spacing: 6) {
                 Text(mode == .signIn ? "Welcome back" : "Create your account")
@@ -195,7 +162,7 @@ struct LoginScreen: View {
                      ? "Sign in to pick up where you left off."
                      : "Join in under a minute. No spam, ever.")
                     .font(.callout)
-                    .foregroundStyle(.white.opacity(0.75))
+                    .foregroundStyle(.white.opacity(0.8))
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, 32)
                     .contentTransition(.opacity)
@@ -204,7 +171,7 @@ struct LoginScreen: View {
         }
     }
 
-    // MARK: - Segmented switcher
+    // MARK: - Segmented switcher (custom glass control)
 
     private var segmentedSwitcher: some View {
         GlassEffectContainer(spacing: 4) {
@@ -216,37 +183,35 @@ struct LoginScreen: View {
         }
     }
 
-    // `.glass` and `.glassProminent` are different concrete ButtonStyle types, so
-    // they cannot be selected with a ternary — branch on the whole button instead.
+    // The two button styles are different concrete types, so a ternary
+    // can't choose between them. Branch on the whole button instead.
     @ViewBuilder
     private func segment(_ m: Mode) -> some View {
         if m == mode {
             segmentButton(m)
                 .buttonStyle(.glassProminent)
-                .tint(.white.opacity(0.28))
-                .foregroundStyle(.white)
+                .accessibilityAddTraits(.isSelected)
                 .glassEffectID("seg-\(m.rawValue)", in: ns)
         } else {
             segmentButton(m)
                 .buttonStyle(.glass)
-                .tint(.clear)
-                .foregroundStyle(.white)
+                .tint(.primary)
                 .glassEffectID("seg-\(m.rawValue)", in: ns)
         }
     }
 
     private func segmentButton(_ m: Mode) -> some View {
         Button {
-            withAnimation(.bouncy) { mode = m }
+            withAnimation(switchAnimation) { mode = m }
         } label: {
             Text(m.rawValue)
                 .font(.callout.weight(.semibold))
                 .frame(maxWidth: .infinity)
-                .padding(.vertical, 12)
+                .padding(.vertical, 8)
         }
     }
 
-    // MARK: - Fields
+    // MARK: - Fields (content layer: standard material)
 
     private func field(
         _ symbol: String,
@@ -258,9 +223,10 @@ struct LoginScreen: View {
     ) -> some View {
         HStack(spacing: 12) {
             Image(systemName: symbol)
-                .foregroundStyle(.white.opacity(0.7))
+                .foregroundStyle(.white.opacity(0.75))
                 .frame(width: 22)
-            TextField("", text: text, prompt: Text(placeholder).foregroundStyle(.white.opacity(0.55)))
+                .accessibilityHidden(true)
+            TextField(placeholder, text: text, prompt: Text(placeholder).foregroundStyle(.white.opacity(0.6)))
                 .focused($focused, equals: focus)
                 .keyboardType(keyboard)
                 .textContentType(content)
@@ -270,11 +236,11 @@ struct LoginScreen: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 14)
-        .glassEffect(.regular, in: .rect(cornerRadius: 18))
-        .overlay(
+        .background(.ultraThinMaterial, in: .rect(cornerRadius: 18))
+        .overlay {
             RoundedRectangle(cornerRadius: 18)
                 .stroke(focused == focus ? .white.opacity(0.6) : .clear, lineWidth: 1)
-        )
+        }
     }
 
     private func secureField(
@@ -285,13 +251,14 @@ struct LoginScreen: View {
     ) -> some View {
         HStack(spacing: 12) {
             Image(systemName: symbol)
-                .foregroundStyle(.white.opacity(0.7))
+                .foregroundStyle(.white.opacity(0.75))
                 .frame(width: 22)
+                .accessibilityHidden(true)
             Group {
                 if showPassword {
-                    TextField("", text: text, prompt: Text(placeholder).foregroundStyle(.white.opacity(0.55)))
+                    TextField(placeholder, text: text, prompt: Text(placeholder).foregroundStyle(.white.opacity(0.6)))
                 } else {
-                    SecureField("", text: text, prompt: Text(placeholder).foregroundStyle(.white.opacity(0.55)))
+                    SecureField(placeholder, text: text, prompt: Text(placeholder).foregroundStyle(.white.opacity(0.6)))
                 }
             }
             .focused($focused, equals: focus)
@@ -301,50 +268,45 @@ struct LoginScreen: View {
             .foregroundStyle(.white)
 
             Button {
-                withAnimation(.snappy) { showPassword.toggle() }
+                showPassword.toggle()
             } label: {
                 Image(systemName: showPassword ? "eye.slash.fill" : "eye.fill")
-                    .foregroundStyle(.white.opacity(0.7))
                     .contentTransition(.symbolEffect(.replace))
+                    .foregroundStyle(.white.opacity(0.75))
+                    .frame(width: 44, height: 44)
             }
+            .accessibilityLabel(showPassword ? "Hide password" : "Show password")
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 14)
-        .glassEffect(.regular, in: .rect(cornerRadius: 18))
-        .overlay(
+        .padding(.leading, 16)
+        .padding(.trailing, 4)
+        .padding(.vertical, 2)
+        .background(.ultraThinMaterial, in: .rect(cornerRadius: 18))
+        .overlay {
             RoundedRectangle(cornerRadius: 18)
                 .stroke(focused == focus ? .white.opacity(0.6) : .clear, lineWidth: 1)
-        )
+        }
     }
 
     // MARK: - Helper row
 
     private var helperRow: some View {
         HStack {
-            Toggle(isOn: $rememberMe) {
-                Text("Remember me")
-                    .font(.footnote.weight(.medium))
-                    .foregroundStyle(.white.opacity(0.85))
-            }
-            .toggleStyle(.switch)
-            .tint(.white)
-            .labelsHidden()
+            Toggle("Remember me", isOn: $rememberMe)
+                .toggleStyle(.switch)
+                .labelsHidden()
+                .tint(.green)
 
             Text("Remember me")
                 .font(.footnote.weight(.medium))
                 .foregroundStyle(.white.opacity(0.85))
+                .accessibilityHidden(true)               // the toggle already carries this label
 
             Spacer()
 
-            Button { } label: {
-                Text("Forgot password?")
-                    .font(.footnote.weight(.semibold))
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 6)
-            }
-            .buttonStyle(.glass)
-            .tint(.white)
-            .foregroundStyle(.white)
+            Button("Forgot password?") { }               // a link in the form, not floating chrome
+                .buttonStyle(.borderless)
+                .font(.footnote.weight(.semibold))
+                .foregroundStyle(.white)
         }
     }
 
@@ -356,55 +318,58 @@ struct LoginScreen: View {
         } label: {
             HStack(spacing: 8) {
                 Text(mode == .signIn ? "Sign In" : "Create Account")
-                    .font(.body.weight(.semibold))
                 Image(systemName: "arrow.right")
-                    .font(.body.weight(.semibold))
             }
+            .font(.body.weight(.semibold))
             .frame(maxWidth: .infinity)
-            .foregroundStyle(.black)
         }
-        .buttonStyle(.glassProminent)
-        .controlSize(.extraLarge)
-        .tint(.white)
+        .buttonStyle(.glassProminent)                   // accent-colored background by default
+        .controlSize(.large)
     }
 
     // MARK: - Divider
 
     private var dividerLabel: some View {
         HStack(spacing: 12) {
-            Rectangle().fill(.white.opacity(0.2)).frame(height: 1)
+            Rectangle().fill(.white.opacity(0.25)).frame(height: 1)
             Text("or continue with")
                 .font(.caption)
-                .foregroundStyle(.white.opacity(0.6))
-            Rectangle().fill(.white.opacity(0.2)).frame(height: 1)
+                .foregroundStyle(.white.opacity(0.7))
+            Rectangle().fill(.white.opacity(0.25)).frame(height: 1)
         }
     }
 
-    // MARK: - Social cluster
+    // MARK: - Other sign-in options
 
-    private var socialCluster: some View {
-        GlassEffectContainer(spacing: 10) {
-            HStack(spacing: 10) {
-                socialButton("apple.logo", label: "Apple")
-                socialButton("g.circle.fill", label: "Google")
-                socialButton("envelope.fill", label: "Email")
+    private var socialOptions: some View {
+        VStack(spacing: 10) {
+            SignInWithAppleButton(mode == .signIn ? .signIn : .signUp) { request in
+                request.requestedScopes = [.fullName, .email]
+            } onCompletion: { _ in
+                // handle the authorization result
+            }
+            .signInWithAppleButtonStyle(.white)          // black or white only; never glass
+            .frame(height: 50)
+            .clipShape(.capsule)
+
+            GlassEffectContainer(spacing: 10) {
+                HStack(spacing: 10) {
+                    socialButton("g.circle.fill", label: "Google")
+                    socialButton("envelope.fill", label: "Email Link")
+                }
             }
         }
     }
 
     private func socialButton(_ symbol: String, label: String) -> some View {
         Button { } label: {
-            VStack(spacing: 6) {
-                Image(systemName: symbol)
-                    .font(.title3)
-                Text(label)
-                    .font(.caption.weight(.medium))
-            }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 14)
-            .foregroundStyle(.white)
+            Label(label, systemImage: symbol)
+                .font(.callout.weight(.medium))
+                .frame(maxWidth: .infinity)
+                .frame(minHeight: 34)
         }
         .buttonStyle(.glass)
+        .tint(.primary)
     }
 
     // MARK: - Footer
@@ -412,9 +377,9 @@ struct LoginScreen: View {
     private var footer: some View {
         HStack(spacing: 4) {
             Text(mode == .signIn ? "New here?" : "Already have an account?")
-                .foregroundStyle(.white.opacity(0.7))
+                .foregroundStyle(.white.opacity(0.75))
             Button(mode == .signIn ? "Create one" : "Sign in") {
-                withAnimation(.bouncy) {
+                withAnimation(switchAnimation) {
                     mode = (mode == .signIn) ? .signUp : .signIn
                 }
             }
@@ -424,12 +389,12 @@ struct LoginScreen: View {
         .font(.callout)
     }
 
-    // MARK: - Help bar (floating)
+    // MARK: - Help bar (floating functional layer)
 
     private var helpBar: some View {
         GlassEffectContainer(spacing: 10) {
             HStack(spacing: 10) {
-                helpAction("Contact support", systemImage: "bubble.left.and.bubble.right.fill")
+                helpAction("Support", systemImage: "bubble.left.and.bubble.right.fill")
                 helpAction("Privacy", systemImage: "hand.raised.fill")
                 helpAction("Terms", systemImage: "doc.text.fill")
             }
@@ -442,14 +407,13 @@ struct LoginScreen: View {
                 .font(.caption.weight(.medium))
                 .lineLimit(1)
                 .frame(maxWidth: .infinity)
-                .padding(.vertical, 10)
+                .padding(.vertical, 6)
         }
         .buttonStyle(.glass)
-        .tint(.white)
-        .foregroundStyle(.white)
+        .tint(.primary)
     }
 
-    // MARK: - Backdrop
+    // MARK: - Backdrop (content layer)
 
     private var backdrop: some View {
         ZStack {
@@ -463,7 +427,7 @@ struct LoginScreen: View {
                 endPoint: .bottomTrailing
             )
 
-            // Soft color orbs so glass has varied content to refract
+            // Soft color orbs give the glass varied content to refract
             Circle().fill(.cyan).frame(width: 320, height: 320).blur(radius: 80)
                 .offset(x: -130, y: -260)
             Circle().fill(.pink).frame(width: 360, height: 360).blur(radius: 100)
@@ -473,6 +437,7 @@ struct LoginScreen: View {
             Circle().fill(.purple.opacity(0.7)).frame(width: 240, height: 240).blur(radius: 70)
                 .offset(x: 160, y: -120)
         }
+        .accessibilityHidden(true)
     }
 }
 

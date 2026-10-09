@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Host app for screenshotting the nine Liquid Glass example screens.
+/// Host app for running and screenshotting the Liquid Glass example screens.
 /// Pick a screen at launch: `simctl launch <udid> <bundle> -screen 4`
 /// (NSUserDefaults picks up `-key value` launch arguments automatically.)
 @main
@@ -29,6 +29,13 @@ struct ScreenHost: View {
         case 7: ProfileScreen()
         case 8: LoginScreen()
         case 9: HealthAppShell()
+        case 10:
+            if #available(iOS 27.0, *) {
+                StoreAppShell()
+            } else {
+                ContentUnavailableView("Requires iOS 27", systemImage: "iphone",
+                                       description: Text("Run this screen on an iOS 27 simulator."))
+            }
         default: SettingsScreen()
         }
     }
