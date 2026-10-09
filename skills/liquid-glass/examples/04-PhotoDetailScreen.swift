@@ -44,7 +44,7 @@ struct PhotoDetailScreen: View {
                         }
                         .buttonStyle(.glass)
                         .buttonBorderShape(.circle)
-                        .tint(favorited ? .red : .primary)    // red means "favorite"; otherwise monochrome
+                        .tint(favorited ? Color.red : Color.primary)   // red means "favorite"; otherwise monochrome
                         .accessibilityLabel(favorited ? "Remove from Favorites" : "Favorite")
                         .glassEffectID("favorite", in: ns)
 
