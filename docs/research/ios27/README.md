@@ -31,5 +31,6 @@ Findings marked by an agent are claims until a `verify:` file confirms them.
 | [verify:swiftui-updates#7](verify-swiftui-updates-7.md) | Verify | done — 5 confirmed, 1 partially |
 | [verify:truth-chrome#1](verify-truth-chrome-1.md) | Verify | done — 4 confirmed, 2 partially |
 | [verify:truth-chrome#2](verify-truth-chrome-2.md) | Verify | done — 5 confirmed, 1 partially |
-| verify:truth-chrome#3 | Verify | running |
+| [verify:truth-chrome#3](verify-truth-chrome-3.md) | Verify | done — 5 confirmed, 1 partially |
 | verify:truth-chrome#4 | Verify | running |
+| verify:skill-authoring#1 | Verify | running |
