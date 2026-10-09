@@ -1,190 +1,216 @@
 # Accessibility
 
-Liquid Glass is built to adapt automatically to most accessibility settings, but "automatic" doesn't mean "free." You still own contrast, custom backgrounds, and color semantics. This file covers the system adaptations, the parts you must verify, and the parts you must hand-code.
+Liquid Glass adapts to the main accessibility settings without any code. You still own contrast, labels, color semantics, custom backgrounds, custom motion, and the edges of custom controls.
+
+## Contents
+
+1. [What the system adapts](#1-what-the-system-adapts)
+2. [What you own](#2-what-you-own)
+3. [Environment values](#3-environment-values)
+4. [Contrast](#4-contrast)
+5. [Color is never the only signal](#5-color-is-never-the-only-signal)
+6. [VoiceOver](#6-voiceover)
+7. [Dynamic Type and hit targets](#7-dynamic-type-and-hit-targets)
+8. [The Liquid Glass look setting](#8-the-liquid-glass-look-setting)
+9. [Smart Invert](#9-smart-invert)
+10. [Audit checklist](#10-audit-checklist)
 
 ---
 
-## System-managed adaptations
+## 1. What the system adapts
 
-When the user enables one of these settings, the OS modifies glass rendering for you:
+> "Reduced Transparency makes Liquid Glass frostier and obscures more of the content behind it. Increased contrast makes elements predominantly black or white and highlights them with a contrasting border, and Reduced Motion decreases the intensity of some effects and disables any elastic properties for the material. These are available automatically whenever you use the new material." (WWDC25 219)
 
-| Setting | What changes |
-|---|---|
-| **Reduce Transparency** | Glass densifies into an opaque material with subtle border; lensing disabled |
-| **Increase Contrast** | Stark border added, tints saturate, text contrast strengthened |
-| **Reduce Motion** | Specular tracking off, morphing replaced with cross-fade or hard cut, materialize transitions suppressed |
-| **Differentiate Without Color** | Adds shape/icon cues alongside tint-based meaning (in system components) |
-| **Tinted Mode (iOS 26.1+)** | User-controlled opacity multiplier applied globally |
-| **Smart Invert** | Glass tint inverts; background image stays |
+| Setting | What happens to glass | Your code |
+|---|---|---|
+| Reduce Transparency | Frostier, so less of the content shows through. On iPhone Duo, vertical bars gain a background. | None for glass. Make **custom** translucent backgrounds more opaque. |
+| Increase Contrast | Elements become predominantly black or white, with a contrasting border | None for glass. Provide higher-contrast colors in your own content. |
+| Reduce Motion | Some effects are less intense, and the material loses its elastic properties | None for glass. Calm your **custom** animations ([04 § 8](04-motion-and-interaction.md#8-reduce-motion-and-reduce-bright-effects)). |
+| Show Borders | System controls show borders | Stroke **custom** glass controls ([§3](#3-environment-values)) |
+| Reduce Bright Effects (26.4) | — | Turn off custom shimmer and glow |
+| Differentiate Without Color | — | Add shapes or symbols next to color ([§5](#5-color-is-never-the-only-signal)) |
 
-You don't need to opt into any of these. The system handles them for `.glassEffect()`, `.buttonStyle(.glass)`, `TabView`, `Toolbar`, and `NavigationStack`.
+This adaptation works for `glassEffect`, the glass button styles, and all system chrome. WWDC26: "Liquid Glass seamlessly adapts to a variety of accessibility settings users may choose, such as reducing transparency or increasing contrast."
 
-**But:** custom backgrounds you stack *behind* glass don't get any of these adaptations for free. If you're drawing a custom photo or gradient under glass, you must check those settings yourself.
+> **Don't swap glass for `.identity` under Reduce Transparency.** `.identity` means "your content remains unaffected as if no glass effect was applied", so your labels lose their backing and sit straight on busy content. That's the opposite of what the user asked for. The system already makes the glass frostier.
 
 ---
 
-## Reading accessibility environment values
+## 2. What you own
+
+- **Text contrast** over whatever can appear behind the glass.
+- **Labels** for icon-only controls.
+- **Color semantics.** Color is never the only signal.
+- **Custom backgrounds and overlays** you draw behind or around glass: gradients, photos, translucent fills.
+- **Custom motion**, including drags, springs, and parallax.
+- **Custom highlights** such as shimmer, glow, and pulses.
+- **Custom controls' edges** when Show Borders is on.
+
+---
+
+## 3. Environment values
 
 ```swift
-@Environment(\.accessibilityReduceTransparency) var reduceTransparency
-@Environment(\.accessibilityReduceMotion)       var reduceMotion
-@Environment(\.accessibilityDifferentiateWithoutColor) var differentiateWithoutColor
-@Environment(\.colorSchemeContrast)             var colorSchemeContrast  // .standard | .increased
+@Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+@Environment(\.accessibilityReduceMotion) private var reduceMotion
+@Environment(\.accessibilityDifferentiateWithoutColor) private var differentiateWithoutColor
+@Environment(\.colorSchemeContrast) private var contrast              // .standard | .increased
+@Environment(\.accessibilityShowBorders) private var showBorders      // renamed from accessibilityShowButtonShapes
+// iOS 26.4+: on a 26.0 target, read it from a type marked @available(iOS 26.4, *)
+@Environment(\.accessibilityReduceHighlightingEffects) private var reduceBrightEffects
 ```
 
-### Opting out of glass entirely
-```swift
-view.glassEffect(reduceTransparency ? .identity : .regular)
-```
+**A custom background under glass, with Reduce Transparency:**
 
-`.identity` produces no glass effect — useful when you have a custom rendering that doesn't degrade gracefully under densified glass.
-
-### Adapting custom backgrounds
 ```swift
 ZStack {
     if reduceTransparency {
-        Color.black.opacity(0.85)     // opaque fallback
+        Rectangle().fill(.background)          // solid, adapts to Light and Dark
     } else {
         Image("hero").resizable().scaledToFill()
     }
 }
+.ignoresSafeArea()
 ```
 
----
+**A custom glass control, with Show Borders.** "When this value is true, draw interactive custom controls such as buttons with clearly visible edges." The system button styles already do this.
 
-## Contrast
-
-Liquid Glass refracts and dims its background to keep text legible, but it doesn't guarantee contrast — you do.
-
-| Text role | Minimum ratio (WCAG AA) |
-|---|---|
-| Body text (< 18pt regular, < 14pt bold) | **4.5 : 1** |
-| Large text (≥ 18pt regular, ≥ 14pt bold) | **3 : 1** |
-| Non-text UI (icons, borders) | **3 : 1** |
-
-### How to verify
-1. Build & run on device with the **busiest, brightest** background your app will display behind glass (white photos, neon UI, etc.).
-2. Use Xcode → Accessibility Inspector → Color Contrast Calculator.
-3. Repeat in Dark Mode and with Increase Contrast enabled.
-
-### Common fix
-If contrast fails:
-1. Strengthen the foreground (heavier weight, `.primary` instead of `.secondary`).
-2. Add a subtle scrim *behind* the glass, not on it: `Color.black.opacity(0.15).blendMode(.plusDarker)`.
-3. As last resort, switch the glass variant: `.regular` is denser than `.clear`.
-
----
-
-## Tint should never be the only signal
-
-If you use `.tint(.red)` to mean "destructive" or `.tint(.green)` to mean "success," users with color blindness or `Differentiate Without Color` enabled won't get the message.
-
-### ❌ tint-only
 ```swift
+Button { addItem() } label: {
+    Image(systemName: "plus").frame(width: 44, height: 44)
+}
+.buttonStyle(.plain)
+.glassEffect(.regular.interactive(), in: .circle)
+.overlay {
+    if showBorders {
+        Circle().strokeBorder(.primary.opacity(0.6), lineWidth: 1)
+    }
+}
+.accessibilityLabel("Add item")
+```
+
+On macOS 27 there is a dedicated Show Borders setting. Earlier macOS versions report `true` when Increase Contrast is on. Xcode 27 previews can override *Control Borders* and *Color Scheme Contrast*.
+
+---
+
+## 4. Contrast
+
+Liquid Glass adapts to keep text legible, but it doesn't guarantee your contrast ratios. Apple's targets, which Accessibility Inspector uses (HIG Accessibility, WCAG AA):
+
+| Text size | Weight | Minimum ratio |
+|---|---|---|
+| Up to 17 pt | All | **4.5 : 1** |
+| 18 pt and larger | All | **3 : 1** |
+| All sizes | Bold | **3 : 1** |
+
+For non-text UI (icons, control edges), use at least 3 : 1 (WCAG 2.1). The HIG adds: "If your app doesn't provide this minimum contrast by default, ensure it at least provides a higher contrast color scheme when the system setting Increase Contrast is turned on."
+
+**How to check:**
+1. Run on a device with the **brightest, busiest** content that can sit behind the glass.
+2. Measure with Xcode's Accessibility Inspector (Color Contrast Calculator).
+3. Repeat in Dark Mode, with Increase Contrast on, and at both ends of the Liquid Glass slider (iOS 27).
+
+**If contrast fails,** try these in order:
+1. Strengthen the foreground: a heavier weight, or `.primary` instead of `.secondary`.
+2. Use `.regular` instead of `.clear`.
+3. With clear glass over bright media, add a dimming layer beneath it (about 35% black).
+4. Reconsider placement: glass over high-contrast content may not belong there.
+
+---
+
+## 5. Color is never the only signal
+
+"Avoid relying solely on color to differentiate between objects" (HIG Color). For Differentiate Without Color: "Offer visual indicators, like distinct shapes or icons, in addition to color."
+
+```swift
+// ❌ Only the red says "destructive"
 Button("Delete") { delete() }
     .buttonStyle(.glassProminent)
     .tint(.red)
-```
 
-### ✅ tint + icon + label
-```swift
+// ✅ Role + symbol + text; not the prominent primary
 Button(role: .destructive) { delete() } label: {
     Label("Delete", systemImage: "trash")
 }
-.buttonStyle(.glassProminent)
-.tint(.red)
-```
-
-Using `role: .destructive` is the canonical way — the system applies the right tint *and* shape cues across accessibility modes.
-
----
-
-## VoiceOver
-
-Glass is purely visual; VoiceOver users get no benefit and no penalty from it. But the controls inside glass surfaces need normal accessibility treatment:
-
-```swift
-Button { } label: {
-    Image(systemName: "trash")
-}
 .buttonStyle(.glass)
-.buttonBorderShape(.circle)
-.accessibilityLabel("Delete photo")
-.accessibilityHint("Removes this photo from your library")
 ```
 
-For glass elements that are decorative only (a background blob, a non-interactive chip):
-```swift
-.accessibilityHidden(true)
-```
+`role: .destructive` gives system red. HIG Buttons: "Don't assign the primary role to a button that performs a destructive action."
 
 ---
 
-## Dynamic Type
+## 6. VoiceOver
 
-Glass containers must grow with text. If you've hardcoded heights, your `.glassEffect(in: .capsule)` will clip giant text.
+Glass is visual. VoiceOver users need the same things they always need:
 
-### ❌
+- **Every control has a label.** `Button("Share", systemImage: "square.and.arrow.up")` provides one, even with `.labelStyle(.iconOnly)`. For image-only labels, add `.accessibilityLabel(_:)`.
+- **Hints are optional.** "You should provide a hint only when the results of an action are not obvious from the element's label" (Apple Accessibility Programming Guide).
+- **Selection.** Mark a selected state with `.accessibilityAddTraits(.isSelected)`.
+- **Decorative glass** that isn't a control gets `.accessibilityHidden(true)`.
+- **Expanding menus.** Newly revealed buttons need labels too. Check that the focus order still makes sense after a morph.
+- **Content-switching pickers.** On iOS 27, `.pickerStyle(.tabs)` makes VoiceOver announce the options as tabs.
+
+---
+
+## 7. Dynamic Type and hit targets
+
+Let content set the size. Fixed heights clip large text inside glass capsules.
+
 ```swift
-Text(label)
-    .frame(width: 200, height: 44)
+// ❌
+Text(title).frame(width: 200, height: 44).glassEffect()
+
+// ✅
+Text(title)
+    .padding(.horizontal, 16).padding(.vertical, 10)
     .glassEffect()
 ```
 
-### ✅
-```swift
-Text(label)
-    .padding(.horizontal, 16)
-    .padding(.vertical, 10)
-    .glassEffect()
+- **Hit region.** "A button needs a hit region of at least 44x44 pt — in visionOS, 60x60 pt" (HIG Buttons). Frame the *label* of icon-only buttons at 44 pt or more.
+- **Spacing.** HIG Accessibility asks for about 12 pt around bezeled controls and about 24 pt around controls without a bezel.
+- **Test** at the largest accessibility text sizes. Glass bars and tab bars adapt; custom floating glass must too.
+
+---
+
+## 8. The Liquid Glass look setting
+
+Users choose a preferred look for Liquid Glass in Settings: **Clear or Tinted** in iOS 26.1, and in iOS 27 a slider "anywhere from ultra clear to fully tinted". Standard glass follows it automatically.
+
+- **No API reads the setting.** Don't invent one.
+- **Test at both ends.** Legibility is weakest at ultra clear. At fully tinted, check that prominent and tinted controls still stand out.
+- **It is separate from Reduce Transparency.** That accessibility setting still applies on top of the look setting.
+
+---
+
+## 9. Smart Invert
+
+Smart Invert inverts colors "except for images, media, and some apps that use dark color styles" (Apple Support). System colors are not exempt.
+
+- Mark photos, video, maps, and brand artwork with `.accessibilityIgnoresInvertColors()` so they don't invert.
+- Turn Smart Invert on and check that the primary actions are still legible and that glass over media still reads.
+
+---
+
+## 10. Audit checklist
+
+```
+- [ ] Reduce Transparency ON: glass frosts; custom backgrounds become opaque; text readable
+- [ ] Increase Contrast ON: borders appear; your colors meet the higher-contrast scheme
+- [ ] Reduce Motion ON: custom animations calmer (less bounce, fades); morphs still complete
+- [ ] Show Borders ON: custom glass controls draw a visible edge
+- [ ] Reduce Bright Effects ON (26.4+): custom shimmer/glow suppressed
+- [ ] Liquid Glass slider at ultra clear and fully tinted (iOS 27)
+- [ ] Largest accessibility text size: nothing clipped inside glass
+- [ ] VoiceOver: every control labeled; hints only where needed; selection traits set
+- [ ] Color Filters / grayscale check: no meaning carried by color alone
+- [ ] Smart Invert: media marked accessibilityIgnoresInvertColors; CTAs legible
+- [ ] Contrast: ≤17 pt text ≥ 4.5:1, ≥18 pt or bold ≥ 3:1, non-text UI ≥ 3:1
 ```
 
-Let intrinsic content drive size. The glass shape grows with it.
-
 ---
 
-## Hit targets
+## Sources
 
-Apple's minimum tappable area is **44 × 44 points**. Glass shouldn't change that — the visual size of a glass pill ≠ its hit target. For icon buttons:
-
-```swift
-Button { } label: {
-    Image(systemName: "x.circle")
-        .font(.title2)
-        .frame(width: 44, height: 44)  // hit target
-}
-.buttonStyle(.glass)
-.buttonBorderShape(.circle)
-.contentShape(Circle())                 // ensures circle hit shape
-```
-
----
-
-## Tinted Mode (iOS 26.1+)
-
-Users can globally reduce app glassiness via Settings → Accessibility → Display. The system applies the chosen opacity to all `.glassEffect` automatically. You don't write code for this — but verify your design still reads at maximum opacity (essentially solid).
-
----
-
-## Smart Invert
-
-Smart Invert flips foreground colors but preserves images and media. Your glass tint will invert; your background photo won't. Test by enabling Settings → Accessibility → Display & Text Size → Smart Invert.
-
-Common breakage:
-- `.tint(.white)` becomes `.tint(.black)` — primary action disappears against dark UI
-- Solution: use **system colors** (`.tint(.blue)`, `.tint(.accentColor)`), which Smart Invert leaves alone
-
----
-
-## Accessibility audit checklist
-
-Before shipping a screen with glass:
-
-- [ ] Toggle **Reduce Transparency** → glass becomes opaque, text still readable
-- [ ] Toggle **Increase Contrast** → borders appear, no unintended dark blobs
-- [ ] Toggle **Reduce Motion** → no morphs/shimmers, controls still work
-- [ ] Test largest **Dynamic Type** size → no clipped labels in glass pills
-- [ ] **VoiceOver** sweep → every glass control has a label & hint
-- [ ] **Smart Invert** → primary CTAs still legible
-- [ ] **Color blind simulators** (Xcode → Color Vision Tests) → tint isn't the only cue
-- [ ] Contrast ≥ 4.5:1 on body text, ≥ 3:1 on large text & icons
+- WWDC25 219 *Meet Liquid Glass* · WWDC26 102 *Platforms State of the Union*
+- HIG: [Accessibility](https://developer.apple.com/design/human-interface-guidelines/accessibility) · [Color](https://developer.apple.com/design/human-interface-guidelines/color) · [Buttons](https://developer.apple.com/design/human-interface-guidelines/buttons) · [Materials](https://developer.apple.com/design/human-interface-guidelines/materials)
+- SwiftUI: [`accessibilityShowBorders`](https://developer.apple.com/documentation/swiftui/environmentvalues/accessibilityshowborders) · [`accessibilityReduceHighlightingEffects`](https://developer.apple.com/documentation/swiftui/environmentvalues/accessibilityreducehighlightingeffects) · [`accessibilityIgnoresInvertColors(_:)`](https://developer.apple.com/documentation/swiftui/view/accessibilityignoresinvertcolors(_:)) · [`Glass.identity`](https://developer.apple.com/documentation/swiftui/glass/identity)

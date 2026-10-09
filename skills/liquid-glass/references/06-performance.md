@@ -1,187 +1,102 @@
 # Performance
 
-Liquid Glass is GPU-heavy. The system has been tuned aggressively, but on older hardware (iPhone 11, base-model iPad) and in worst-case layouts, you can still hitch. This file explains the cost model and how to stay smooth.
+Apple publishes **qualitative** performance guidance for Liquid Glass and no numbers. This file states that guidance, gives the structural rules that follow from it, and explains how to measure. It has no frame-time budgets or "N× cheaper" multipliers, because no Apple source supports them. Measure on your own oldest supported device.
+
+## Contents
+
+1. [What Apple says](#1-what-apple-says)
+2. [Structural rules](#2-structural-rules)
+3. [When glass is the wrong tool](#3-when-glass-is-the-wrong-tool)
+4. [Measuring](#4-measuring)
+5. [Device floor](#5-device-floor)
+6. [Checklist](#6-checklist)
 
 ---
 
-## Cost model — what's expensive
+## 1. What Apple says
 
-Each `.glassEffect()` is, conceptually, a **render-to-texture pass**:
-
-1. Sample the content behind the shape
-2. Apply refraction, blur, lighting, tinting
-3. Composite back into the scene
-
-| Operation | Cost |
-|---|---|
-| Single `.glassEffect()` | Cheap on A17 / M-series; noticeable on A13 |
-| 5+ independent `.glassEffect()` siblings | Significant — they each spawn a pass |
-| `.glassEffect()` over animating content | Higher — content texture changes per frame |
-| `.glassEffect()` over video | Highest — full-rate texture updates |
-| `GlassEffectContainer` of N children | ≈ cost of **one** glass effect — system batches them |
-| `.interactive()` modifier | + per-frame gesture/highlight computation |
-| Morphing between IDs | + matched-geometry layout pass per frame |
-
-**Rule of thumb.** 1 container of 5 children is ~5× cheaper than 5 standalone glass views.
+- "Use `GlassEffectContainer` when applying Liquid Glass effects on multiple views to achieve the best rendering performance." (Applying Liquid Glass to custom views)
+- "SwiftUI renders the effects together, improving rendering performance." (`GlassEffectContainer`)
+- "Creating too many Liquid Glass effect containers and applying too many effects to views outside of containers can degrade performance. Limit the use of Liquid Glass effects onscreen at the same time." (Applying Liquid Glass to custom views)
+- "Performance test your app across platforms … Profile your app." (Adopting Liquid Glass)
 
 ---
 
-## The three perf commandments
+## 2. Structural rules
 
-### 1. Group with `GlassEffectContainer` — always
-If you have ≥ 2 glass elements on screen, they belong in a container. Even if they don't morph, you get the batched render pass for free.
+1. **Group neighbors.** Two or more custom glass shapes near each other go in **one** `GlassEffectContainer`. That is better for rendering, and it's needed for correct visuals anyway, since glass can't sample other glass.
+2. **Don't over-containerize.** Use one container per cluster, not one per view, and not nested containers for the same cluster.
+3. **Keep the count low.** "Limit the use of Liquid Glass effects onscreen at the same time." A screen usually needs the system bars plus a handful of custom glass controls at most.
+4. **No glass in repeated content.** List rows, grid cells, and cards are content layer. Glass doesn't belong there, and each row would add another effect.
+5. **`.interactive()` only on things people touch.** It adds touch tracking and response. Labels and status chips don't need it.
+6. **Animate glass inside its container.** Morphs and materialize transitions are designed for container children.
+7. **Glass over video.** It works; video players use it. Use `.clear` with dimming over bright video. AVKit's controls bring their own dimming. Hide transient controls during playback as video apps usually do. Note that `.clear` is a *legibility* choice: Apple gives no performance reason to prefer it.
 
 ```swift
-// ❌ five independent passes
-HStack {
-    Button(...).buttonStyle(.glass)
-    Button(...).buttonStyle(.glass)
-    Button(...).buttonStyle(.glass)
-    Button(...).buttonStyle(.glass)
-    Button(...).buttonStyle(.glass)
+// ❌ Glass in every row: content layer, and N effects on screen
+List(items) { item in
+    Text(item.title).padding().glassEffect()
 }
 
-// ✅ one batched pass
-GlassEffectContainer(spacing: 12) {
-    HStack(spacing: 12) {
-        Button(...).buttonStyle(.glass)
-        Button(...).buttonStyle(.glass)
-        Button(...).buttonStyle(.glass)
-        Button(...).buttonStyle(.glass)
-        Button(...).buttonStyle(.glass)
-    }
-}
-```
-
-### 2. Don't glass-on-glass
-Glass cannot sample other glass — you get flat blur and an extra pass. If you find yourself nesting, merge with `GlassEffectContainer` or `.glassEffectUnion()`.
-
-### 3. Glass on video/games costs real frames
-A glass HUD over a 60 fps gameplay surface or a video player will eat 1–3 ms/frame on A13–A14. Either:
-- Use `.clear` variant (lighter)
-- Reduce overlay complexity (one container, not many shapes)
-- Hide the overlay during heavy moments (`isEnabled: false`)
-
----
-
-## When glass is the wrong tool
-
-Glass is for **chrome that floats above content**. If your "glass" is:
-
-| Use case | Better tool |
-|---|---|
-| Solid card with subtle blur | `.background(.background)` + shadow |
-| Full-screen overlay | `.background(.regularMaterial)` (legacy) is still legal for full backgrounds where lensing has nothing to lens |
-| Decorative gradient panel | `LinearGradient` |
-| Loading spinner backdrop | `Color.black.opacity(0.3)` |
-| Tooltip / coachmark | `.popover` with system styling |
-
-Using glass everywhere is the iOS-26 equivalent of putting drop-shadows on everything in 2010.
-
----
-
-## Animation cost
-
-Morphing is **cheap inside** `GlassEffectContainer` (single pass), **expensive outside** (multiple passes per frame).
-
-```swift
-// ❌ 4 morphs × 60 fps = 240 glass passes/sec
-ForEach(items) { item in
-    Capsule().glassEffect()
-        .frame(width: item.width)
-        .animation(.bouncy, value: item.width)
-}
-
-// ✅ 1 batched morph per frame
-GlassEffectContainer(spacing: 16) {
-    ForEach(items) { item in
-        Capsule().glassEffect()
-            .frame(width: item.width)
-    }
-}
-.animation(.bouncy, value: items)
-```
-
----
-
-## `.interactive()` is not free
-
-Each `.interactive()` modifier installs:
-- A `DragGesture` recognizer
-- A per-frame transform calculation
-- A specular-highlight tracker
-
-Applying `.interactive()` to a dozen static labels is wasteful. Apply only to elements the user actually touches.
-
----
-
-## Long lists
-
-Glass cells in a `List` or `LazyVStack` are usually wrong (content layer, not chrome). But if you really need them — e.g., a section header pill that floats — make sure cells aren't applying glass per row:
-
-```swift
-// ❌ glass per row
+// ✅ Plain rows; the bars above provide the glass
 List(items) { item in
     Text(item.title)
-        .padding()
-        .glassEffect()
-}
-
-// ✅ a single glass header, plain rows
-List {
-    Section {
-        Text("Featured")
-            .padding(.horizontal)
-            .glassEffect()
-    }
-    ForEach(items) { item in
-        Text(item.title)
-    }
 }
 ```
 
 ---
 
-## Profile, don't guess
+## 3. When glass is the wrong tool
 
-Instruments → **Metal System Trace** (Xcode 26) shows glass passes as labeled phases. Look for:
-- "GlassEffect: layout" — should appear once per container per frame
-- "GlassEffect: composite" — should not spike during scroll
-
-If you see N composite phases for N glass children, you're missing a container.
-
-The **Animation Hitch** template will surface frames where a glass animation drops below 60/120 fps.
+| You want… | Use |
+|---|---|
+| A card or panel in the content | `.background(.background, in: .rect(cornerRadius: 20))`, or a standard material |
+| A translucent content-layer surface | `.background(.regularMaterial, in: shape)` (standard materials are for the content layer) |
+| A full-screen dimmer behind a modal | A system presentation (sheet or alert), or `Color.black.opacity(…)` |
+| A decorative panel | A gradient or solid fill |
+| A loading state | `ProgressView` |
+| An empty state | `ContentUnavailableView` |
+| A tooltip or coachmark | `.popover`, or TipKit |
 
 ---
 
-## Energy
+## 4. Measuring
 
-Glass over video at 120Hz on an iPad Pro is one of the more energy-hungry UI patterns. On long-running screens (a paused video, an idle media player):
+- **Instruments → SwiftUI.** View body updates and layout during glass-heavy interactions (WWDC25 306 *Optimize SwiftUI performance with Instruments*).
+- **Instruments → Animation Hitches.** Dropped frames during morphs, materialize transitions, and scrolling under bars (Apple Tech Talks *Explore UI animation hitches and the render loop*).
+- **Hangs and responsiveness.** WWDC26 268 *Profile, fix, and verify: Improve app responsiveness with Instruments*.
+- **Xcode 27 Organizer.** The new *Hitches* metric "replaces the Scrolling metric in the Organizer, now displaying animation hitches for all animations in your app".
 
-```swift
-.glassEffect(.regular, isEnabled: !isIdle)
+**How to profile:**
+1. Use a release build on the slowest device you support.
+2. Show the busiest content you have behind the glass.
+3. Run the interactions that move glass: open and close menus, scroll under minimizing bars, drag.
+4. Compare against the same screen with the custom glass removed. The difference is what the glass costs you.
+
+---
+
+## 5. Device floor
+
+- **iPhone.** iOS 26 and iOS 27 support iPhone 11 and later (A13), and iOS 27 dropped no devices. Profile your worst screen there.
+- **Apple TV.** "Apple TV 4K (2nd generation) and newer models support Liquid Glass effects. On older devices, your app maintains its current appearance."
+- **Older iPhones** can't run iOS 26, so there is no "older device fallback" for you to write.
+
+---
+
+## 6. Checklist
+
+```
+- [ ] Every cluster of 2+ custom glass shapes is in one GlassEffectContainer
+- [ ] No container per view; no nested containers for one cluster
+- [ ] No glass in List/Grid rows or content cards
+- [ ] .interactive() only on touchable custom glass
+- [ ] Glass morphs/insertions happen inside the container, inside withAnimation
+- [ ] Profiled (SwiftUI + Animation Hitches) in release on the oldest supported device
 ```
 
-…degrades to no-effect when the user is inactive, reclaiming GPU and battery.
-
 ---
 
-## Older hardware
+## Sources
 
-iPhone 11 / 12 mini / iPad 9th-gen can sustain a "rich" glass UI but break under:
-- 4+ independent glass elements morphing simultaneously
-- Glass over 4K video
-- Glass + heavy `.background` blurs simultaneously
-
-If your minimum target is iOS 26 on iPhone 11, build your worst-case screen and profile it. Either rein in the glass or accept a lower frame rate during transitions only.
-
----
-
-## Quick wins checklist
-
-- [ ] Every cluster of 2+ glass elements is in a `GlassEffectContainer`
-- [ ] No glass-on-glass (nested `.glassEffect()`)
-- [ ] `.interactive()` only on touchable elements
-- [ ] No glass on list cells or long scroll content
-- [ ] No glass during video playback unless `.clear` variant
-- [ ] Profile pass under Metal System Trace before shipping
+- [Applying Liquid Glass to custom views](https://developer.apple.com/documentation/swiftui/applying-liquid-glass-to-custom-views) · [`GlassEffectContainer`](https://developer.apple.com/documentation/swiftui/glasseffectcontainer) · [Adopting Liquid Glass](https://developer.apple.com/documentation/technologyoverviews/adopting-liquid-glass)
+- WWDC25 306 · WWDC26 268 · Apple Tech Talks 10856/10857 · Xcode 27 release notes

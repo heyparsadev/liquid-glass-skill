@@ -1,155 +1,156 @@
-# Design Tokens — Liquid Glass
+# Design tokens
 
-Conventions for spacing, radii, tinting, and typography that keep your iOS 26 app coherent with the rest of the system. These aren't hardcoded by Apple — they're the values their first-party apps converge on.
+Shapes, spacing, dimming, color, type, and motion values for glass UI.
+
+Apple publishes **few numeric tokens** for Liquid Glass. Each value below is marked either **Apple** (from Apple's documentation or a session, with its source) or **suggested** (a starting value this skill recommends; tune it by eye).
+
+## Contents
+
+1. [Shapes and radii](#1-shapes-and-radii)
+2. [Spacing and hit targets](#2-spacing-and-hit-targets)
+3. [Container spacing (blend distance)](#3-container-spacing-blend-distance)
+4. [Dimming for clear glass](#4-dimming-for-clear-glass)
+5. [Color](#5-color)
+6. [Typography and symbols](#6-typography-and-symbols)
+7. [Animation](#7-animation)
+8. [Layer order](#8-layer-order)
+9. [Quick reference](#9-quick-reference)
 
 ---
 
-## Corner radii
+## 1. Shapes and radii
 
-| Surface | Radius | How to express |
+| Element | Shape | Source |
 |---|---|---|
-| Floating button (capsule) | system | `.buttonBorderShape(.capsule)` |
-| Floating icon button | system | `.buttonBorderShape(.circle)` |
-| Card inside a sheet | `.containerConcentric` | `.rect(cornerRadius: .containerConcentric)` |
-| Standalone card | 20–28 | `RoundedRectangle(cornerRadius: 24)` |
-| Inline glass chip | 12–16 | `RoundedRectangle(cornerRadius: 14)` |
-| Sheet itself | system | managed by `.sheet` |
+| Glass default | Capsule (`DefaultGlassEffectShape()`) | Apple |
+| Icon-only floating button | `.buttonBorderShape(.circle)` | Apple style; suggested use |
+| Label button | `.buttonBorderShape(.capsule)` or `.automatic` (the default) | Apple |
+| Element inside a rounded container | `.rect(corners: .concentric(minimum: …), isUniform: true)` + `.containerShape(_:)` on the parent | Apple API |
+| Top-level card or panel (content layer) | Fixed radius, about **20–28 pt**, continuous corners | Suggested |
+| Small chip or tag (content layer) | Capsule, or about **12–16 pt** | Suggested |
+| Sheet, window, device corners | System-managed | Apple |
 
-**Rule.** Inside any rounded container, prefer `.containerConcentric` over a literal radius. Hardcode only at the outermost layer.
+Apple's rule of thumb (WWDC25 356):
+- **Fixed** corners keep a constant radius.
+- **Capsules** use half the container height.
+- **Concentric** corners subtract the padding from the parent's radius.
+
+Declare the top-level radius once, as the container shape, and let inner shapes derive theirs. A concentric radius can resolve to zero if no container shape is found, so give it a `minimum`.
 
 ---
 
-## Spacing
+## 2. Spacing and hit targets
 
-### Inside `GlassEffectContainer`
-The `spacing:` parameter is the **morph threshold** — elements within this distance blend during transitions.
-
-| Context | Spacing |
-|---|---|
-| Tight toolbar (small icons) | `8–12` |
-| Standard floating controls | `16–20` |
-| Expanding action menu | `24–32` |
-| Distinct, non-morphing siblings | `40+` (or omit container) |
-
-### Padding inside glass elements
-| Control | Horizontal pad | Vertical pad |
+| Token | Value | Source |
 |---|---|---|
-| Icon button | 12 | 12 |
-| Label button (`.regular`) | 16 | 10 |
-| Label button (`.large`) | 20 | 14 |
-| Label button (`.extraLarge`) | 28 | 18 |
-| Glass card | 20 | 20 |
+| Hit region | **44 × 44 pt** minimum for a tappable control (60 × 60 pt in visionOS) | Apple (HIG Buttons) |
+| Default / minimum control size, iOS | 44 × 44 pt default, 28 × 28 pt minimum | Apple (HIG Accessibility) |
+| Space around bezeled elements | about **12 pt** | Apple (HIG Accessibility) |
+| Space around elements without a bezel | about **24 pt** | Apple (HIG Accessibility) |
+| Padding inside an icon button label | Frame the symbol at 44–52 pt | Suggested |
+| Padding inside a custom glass label | 16 horizontal × 10 vertical | Suggested |
+| Padding inside a content card | 16–20 | Suggested |
+| Gap between floating glass controls | 8–16 | Suggested |
+
+Let content set the size: padding plus intrinsic size, not fixed heights, so Dynamic Type can grow ([05 § 7](05-accessibility.md#7-dynamic-type-and-hit-targets)).
 
 ---
 
-## Tint palette
+## 3. Container spacing (blend distance)
 
-Use **system colors**, never raw hex, so glass adapts to Light/Dark/Increased Contrast.
+`GlassEffectContainer(spacing:)` sets when shapes start to blend: "The higher the spacing, the sooner blending begins". If it is **larger than the layout spacing** inside, shapes "blend together at rest" (Apple).
+
+| Intent | Container `spacing` | Layout `spacing` |
+|---|---|---|
+| Separate controls that morph only while animating | Equal to the layout gap (e.g. 12) | 12 |
+| Controls that should read as one fused bar at rest | Larger than the layout gap (e.g. 24) | 8 |
+| An expanding menu whose items grow out of the toggle | About 16–30 | The same or smaller |
+| `nil` | System default | — |
+
+These are suggested values. The relationship (container spacing compared with layout spacing) comes from Apple.
+
+---
+
+## 4. Dimming for clear glass
+
+| Situation | Token | Source |
+|---|---|---|
+| Clear glass over **bright** media | A dark dimming layer of about **35%** (`Color.black.opacity(0.35)`) between the media and the controls | Apple (HIG Materials) |
+| Clear glass over sufficiently **dark** media | No dimming | Apple |
+| AVKit playback controls | No extra dimming. They provide their own. | Apple |
+| Regular glass | No dimming | — |
+
+The `Glass.clear` documentation: "ensure content remains legible by adding a dimming layer or other treatment beneath the glass."
+
+---
+
+## 5. Color
+
+Use system colors so glass adapts to Light, Dark, Increase Contrast, and the Liquid Glass look setting.
+
+| Role | Token | Rule |
+|---|---|---|
+| Primary action | `.buttonStyle(.glassProminent).tint(.accentColor)` | One or two per view (HIG Buttons). Color goes on the background (HIG Color). |
+| Destructive | `Button(role: .destructive)` → system red | Not the prominent primary (HIG Buttons) |
+| Status | `.badge(n)`, accent-colored selected-tab icon | HIG Branding |
+| Brand | The content layer: headers, artwork, backgrounds | HIG Branding (Sept 2026) |
+| Bar items and secondary glass buttons | Untinted (monochrome) | HIG Color, WWDC25 323 |
+| Text on glass | `.primary`, `.secondary` (vibrant) | Suggested |
+
+Don't build a palette that maps hues to moods (purple for creative, pink for social, and so on). Apple's rule is fewer tints, with meaning.
+
+---
+
+## 6. Typography and symbols
+
+- **Type.** Use Dynamic Type text styles (`.body`, `.headline`, `.callout`, `.footnote`, …), never fixed sizes. Apple's 26-era change: "Typography has been refined to strengthen clarity and structure, now bolder and left-aligned to improve readability in key moments like alerts and onboarding" (WWDC25 356).
+- **Suggested roles.**
+  - Floating button label: `.body.weight(.semibold)`
+  - Icon-only button symbol: `.title3`
+  - Hint text: `.footnote` with `.secondary`
+  - Navigation titles: let `NavigationStack` set them.
+- **Symbols.** SF Symbols 7 shipped with iOS 26 and SF Symbols 8 ships with iOS 27. On bars, symbols use monochrome rendering and "automatically receive appropriate coloring and vibrancy" (HIG Toolbars). Keep the default there. Use `.hierarchical` or palette rendering when it helps a custom control, not as a rule.
+- **Toolbar items.** On iPhone Duo, "provide both a title and a symbol for each toolbar item that isn't text-only." `Button("Share", systemImage: "square.and.arrow.up")` does both.
+
+---
+
+## 7. Animation
+
+Apple's glass samples use a plain `withAnimation { … }`. No curve is required for glass. The table below lists **suggested** curves:
 
 ```swift
-.tint(.blue)        // primary
-.tint(.red)         // destructive
-.tint(.green)       // success / confirmation
-.tint(.orange)      // warning
-.tint(.yellow)      // caution
-.tint(.purple)      // creative / playful
-.tint(.pink)        // social / favorites
-.tint(.gray)        // neutral emphasis
-.tint(.accentColor) // app-wide accent
+withAnimation { … }                                   // system default: fine for morphs
+withAnimation(.bouncy) { … }                          // playful morphs (menus, toggles)
+withAnimation(.smooth) { … }                          // calmer state changes
+withAnimation(.snappy) { … }                          // quick selection changes
+withAnimation(.spring(response: 0.4, dampingFraction: 0.75)) { … }   // returning a dragged element
 ```
 
-### When to tint glass vs. tint content
-| Goal | What to tint |
-|---|---|
-| Primary CTA | tint the glass (`.glassProminent.tint(.blue)`) |
-| Indicate selection | tint the icon, leave glass neutral |
-| Show severity (alert, error) | tint the icon, leave glass neutral; only tint glass for truly destructive primary actions |
-| Brand identity | tint **content only**, never the glass |
+- Glass changes must happen **inside an animation** to morph or materialize. Without one, they cut.
+- Under **Reduce Motion**, use a calmer curve: tighter springs with less bounce, or fades instead of movement (HIG Accessibility). For example, `withAnimation(reduceMotion ? .smooth : .bouncy)`. Don't drop the animation entirely.
 
 ---
 
-## Typography on glass
+## 8. Layer order
 
-iOS 26 system fonts have been retuned for better legibility over glass. Use them.
+From back to front:
 
-| Role | Font |
-|---|---|
-| Floating button label | `.body.weight(.semibold)` |
-| Icon-only button | `.title3` symbol |
-| Toolbar label | `.callout` |
-| Nav bar title | `.largeTitle.bold()` (auto by `NavigationStack`) |
-| Hint text | `.footnote` with `.secondary` |
-
-**Always** test the smallest text size over the busiest possible background — a low-contrast `.caption` on a glass overlay over a photo is the most common ship-blocker.
+1. **Content.** Images, lists, scroll views. Often extends under the bars (`ignoresSafeArea`, `backgroundExtensionEffect`).
+2. **Scroll edge effect.** System-drawn under the bars. Don't add your own scrim.
+3. **System bars.** Navigation bar, toolbars, tab bar. On iPhone Duo these can be a vertical bar at the side.
+4. **Custom floating glass.** Action buttons, palettes, accessories. Keep it clear of the system bars and of reserved regions.
+5. **Presentations.** Sheets, popovers, menus, alerts (system glass).
 
 ---
 
-## Background materials to pair with glass
-
-Glass shines over varied, photographic, or scrolling content. If you need a solid backing:
-
-| Background | When |
-|---|---|
-| Photographic / video | Best showcase for `.clear` glass |
-| `.background(.background)` | System adaptive solid (default for content layer) |
-| Gradient (subtle) | OK for hero areas; avoid harsh stops |
-| Solid bright color | ❌ avoid — kills lensing |
-
----
-
-## Animation timings
-
-Standard SwiftUI presets work well; the system has been tuned for glass.
-
-```swift
-withAnimation(.bouncy) { ... }                              // default for glass morphing
-withAnimation(.smooth(duration: 0.35)) { ... }              // for non-morphing chrome
-withAnimation(.snappy) { ... }                              // for instantly responsive toggles
-withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) // for drag returns
-```
-
-Avoid `.linear` for glass — it strips the elasticity Liquid Glass is built around.
-
----
-
-## Symbols (SF Symbols 7)
-
-iOS 26 ships **SF Symbols 7** with motion-aware variants. Pair them with glass for the canonical look:
-
-```swift
-Image(systemName: "heart")
-    .symbolEffect(.bounce, value: liked)
-    .symbolRenderingMode(.hierarchical)
-    .font(.title2)
-    .frame(width: 44, height: 44)
-    .glassEffect(.regular.interactive())
-```
-
-Prefer `.hierarchical` rendering on glass — it preserves depth cues that pair with the lensing.
-
----
-
-## Z-stack order
-
-When composing a screen, this is the canonical order from back to front:
-
-1. Content layer (image, list, scroll view) — fills the safe area, ignores it where appropriate
-2. Glass chrome (nav bar, tab bar — system) — sits in the safe area
-3. Floating glass overlays (action menu, FAB, now-playing strip)
-4. Transient glass (sheets, alerts — system)
-
-Don't insert custom glass between layers 1 and 2; let the system own that band.
-
----
-
-## Quick reference table
+## 9. Quick reference
 
 | Token | Value |
 |---|---|
-| Default glass shape | `Capsule` |
-| Default container spacing | `nil` (system optimal) |
-| Default morph threshold | `16–24` |
-| Concentric corner trick | `.rect(cornerRadius: .containerConcentric)` |
-| Primary CTA recipe | `.buttonStyle(.glassProminent).tint(.blue).controlSize(.large)` |
-| Floating FAB recipe | `.buttonStyle(.glassProminent).buttonBorderShape(.circle).controlSize(.extraLarge)` |
-| Icon button recipe | `Image(systemName:).frame(44,44).glassEffect(.regular.interactive())` |
+| Default glass | `.regular`, capsule |
+| Concentric inner shape | `.rect(corners: .concentric(minimum: 12), isUniform: true)` + parent `.containerShape(.rect(cornerRadius: R))` |
+| Primary CTA | `.buttonStyle(.glassProminent).tint(.accentColor).controlSize(.large)` |
+| Icon button | `Button { } label: { Image(systemName:).frame(width: 44, height: 44) }.buttonStyle(.glass).buttonBorderShape(.circle)` |
+| Clear glass over bright media | `.clear` + `Color.black.opacity(0.35)` beneath |
+| Hit region | ≥ 44 × 44 pt |
+| Container spacing | ≤ layout gap (separate at rest), > layout gap (fused at rest) |
