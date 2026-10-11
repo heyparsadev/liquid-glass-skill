@@ -1,6 +1,13 @@
 // DashboardScreen.swift
-// iOS 26 Liquid Glass example — grid of solid widget cards with glass chips,
-// a glass quick-action bar pinned via safeAreaInset, and a sticky glass header.
+// Liquid Glass example: a health dashboard.
+//
+// Functional layer (glass, all system-provided): the navigation bar and a
+// bottom toolbar that holds the quick-log actions and the minimized search
+// button. DefaultToolbarItem sits directly in the toolbar builder.
+// Content layer (no glass): the greeting, the widget cards (solid surfaces),
+// and the workout cards (gradients with standard-material chips).
+//
+// Requires: Xcode 26 or later, iOS 26 or later.
 
 import SwiftUI
 
@@ -14,21 +21,23 @@ struct DashboardScreen: View {
         .init(title: "Mindful", value: "12m", caption: "Today", symbol: "brain.head.profile", tint: .teal)
     ]
 
+    private let workouts = ["20 min cardio", "Yoga flow", "HIIT", "Strength", "Recovery"]
+
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 24) {
-                    // Greeting hero
+                    // Greeting
                     VStack(alignment: .leading, spacing: 6) {
                         Text("Good morning")
                             .font(.title3)
                             .foregroundStyle(.secondary)
-                        Text("Parsa")
+                        Text("Alex")
                             .font(.largeTitle.bold())
                     }
                     .padding(.horizontal)
 
-                    // Widget grid
+                    // Widget grid: content cards on solid surfaces
                     LazyVGrid(
                         columns: [GridItem(.flexible()), GridItem(.flexible())],
                         spacing: 16
@@ -44,17 +53,16 @@ struct DashboardScreen: View {
                         Text("Featured workouts")
                             .font(.title3.bold())
                             .padding(.horizontal)
-                        ScrollView(.horizontal, showsIndicators: false) {
+                        ScrollView(.horizontal) {
                             HStack(spacing: 12) {
-                                ForEach(0..<5, id: \.self) { i in
+                                ForEach(workouts.indices, id: \.self) { i in
                                     workoutCard(i: i)
                                 }
                             }
                             .padding(.horizontal)
                         }
+                        .scrollIndicators(.hidden)
                     }
-
-                    Color.clear.frame(height: 80) // breathing room for floating bar
                 }
                 .padding(.vertical)
             }
@@ -65,35 +73,18 @@ struct DashboardScreen: View {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Profile", systemImage: "person.crop.circle") { }
                 }
-            }
-            .safeAreaInset(edge: .bottom) {
-                quickActionBar
-                    .padding(.horizontal)
-                    .padding(.bottom, 8)
-            }
-        }
-    }
 
-    // Pinned floating glass bar — quick log actions
-    private var quickActionBar: some View {
-        GlassEffectContainer(spacing: 10) {
-            HStack(spacing: 10) {
-                quickAction("Log water", systemImage: "drop.fill", tint: .blue)
-                quickAction("Add meal", systemImage: "fork.knife", tint: .orange)
-                quickAction("Log mood", systemImage: "face.smiling", tint: .yellow)
+                // Quick actions live in the system bottom toolbar, not a custom glass bar.
+                // They're untinted, because tint is for meaning, not decoration.
+                ToolbarItemGroup(placement: .bottomBar) {
+                    Button("Log Water", systemImage: "drop.fill") { }
+                    Button("Add Meal", systemImage: "fork.knife") { }
+                    Button("Log Mood", systemImage: "face.smiling") { }
+                }
+                ToolbarSpacer(.flexible, placement: .bottomBar)
+                DefaultToolbarItem(kind: .search, placement: .bottomBar)
             }
         }
-    }
-
-    private func quickAction(_ title: String, systemImage: String, tint: Color) -> some View {
-        Button { } label: {
-            Label(title, systemImage: systemImage)
-                .font(.callout.weight(.medium))
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 10)
-        }
-        .buttonStyle(.glass)
-        .tint(tint)
     }
 
     private func workoutCard(i: Int) -> some View {
@@ -106,18 +97,19 @@ struct DashboardScreen: View {
             .frame(width: 220, height: 280)
             .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
 
-            VStack(alignment: .leading, spacing: 4) {
-                Text(["20 min cardio", "Yoga flow", "HIIT", "Strength", "Recovery"][i])
+            VStack(alignment: .leading, spacing: 6) {
+                Text(workouts[i])
                     .font(.headline)
                     .foregroundStyle(.white)
-                Text("12k joined")
-                    .font(.caption)
+                Text("12k joined")                     // a content chip: material, not glass
+                    .font(.caption.weight(.medium))
                     .padding(.horizontal, 8).padding(.vertical, 4)
-                    .glassEffect(.regular.tint(.white.opacity(0.2)), in: .capsule)
-                    .foregroundStyle(.white)
+                    .background(.ultraThinMaterial, in: .capsule)
+                    .environment(\.colorScheme, .dark)
             }
             .padding(14)
         }
+        .accessibilityElement(children: .combine)
     }
 }
 
@@ -138,7 +130,7 @@ private struct WidgetCard: View {
             HStack {
                 Image(systemName: widget.symbol)
                     .font(.callout.weight(.semibold))
-                    .foregroundStyle(widget.tint)
+                    .foregroundStyle(widget.tint)        // color identifies the metric in the content layer
                 Text(widget.title)
                     .font(.callout.weight(.medium))
                 Spacer()
@@ -154,9 +146,9 @@ private struct WidgetCard: View {
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(.background)
-        .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .background(.background, in: .rect(cornerRadius: 22, style: .continuous))
         .shadow(color: .black.opacity(0.06), radius: 10, y: 4)
+        .accessibilityElement(children: .combine)
     }
 }
 

@@ -1,7 +1,9 @@
-# Pattern — Glass Card Stack
+# Pattern: card stack (content cards, glass controls)
 
 ## Problem
-A scrollable column of cards where the *headers* (or pinned chips on top of each card) are glass, while the card body stays solid content. Glass marks the chrome; the card itself doesn't try to be glass.
+You have a scrolling column of cards with cover images, tags, and actions, and you want it to feel at home in the Liquid Glass design.
+
+**Cards are content.** "Don't use Liquid Glass in the content layer … use standard materials for elements in the content layer" (HIG Materials). So the card and its tag chips get solid or material backgrounds. Glass is used only for **controls** that float over the card's media.
 
 ## Solution
 
@@ -23,6 +25,7 @@ struct CardStack: View {
 
 struct Card: View {
     let item: Item
+    @State private var saved = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -32,12 +35,25 @@ struct Card: View {
                 .frame(height: 200)
                 .clipped()
                 .overlay(alignment: .topLeading) {
-                    Text(item.tag)
+                    Text(item.tag)                          // a content tag: material, not glass
                         .font(.caption.weight(.semibold))
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 6)
-                        .glassEffect()
+                        .padding(.horizontal, 10).padding(.vertical, 6)
+                        .background(.ultraThinMaterial, in: .capsule)
                         .padding(12)
+                }
+                .overlay(alignment: .bottomTrailing) {
+                    Button {                                // a control over media: glass is right
+                        saved.toggle()
+                    } label: {
+                        Image(systemName: saved ? "bookmark.fill" : "bookmark")
+                            .contentTransition(.symbolEffect(.replace))
+                            .font(.title3)
+                            .frame(width: 44, height: 44)
+                    }
+                    .buttonStyle(.glass)
+                    .buttonBorderShape(.circle)
+                    .accessibilityLabel(saved ? "Remove bookmark" : "Bookmark")
+                    .padding(12)
                 }
 
             VStack(alignment: .leading, spacing: 6) {
@@ -46,47 +62,26 @@ struct Card: View {
             }
             .padding()
         }
-        .background(.background)
-        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .background(.background, in: .rect(cornerRadius: 24))   // solid content surface
+        .clipShape(.rect(cornerRadius: 24))
         .shadow(color: .black.opacity(0.08), radius: 12, y: 6)
     }
 }
 ```
 
-The glass tag chip is the **only** glass on the card — it sits over photographic content (the cover image) where lensing actually has something to lens.
-
 ## Variations
 
-### Action button overlaid on cover
-```swift
-.overlay(alignment: .bottomTrailing) {
-    Button(action: {}) {
-        Image(systemName: "plus")
-            .font(.title2)
-            .frame(width: 44, height: 44)
-    }
-    .buttonStyle(.glassProminent)
-    .buttonBorderShape(.circle)
-    .tint(.blue)
-    .padding(12)
-}
-```
-
-### Multiple chips on one cover — group them
-```swift
-.overlay(alignment: .topLeading) {
-    GlassEffectContainer(spacing: 6) {
-        HStack(spacing: 6) {
-            Text("New").chipStyle()
-            Text("Featured").chipStyle().tint(.orange)
-        }
-    }
-    .padding(12)
-}
-```
+- **Two controls over the cover.** Put them in one `GlassEffectContainer`:
+  ```swift
+  GlassEffectContainer(spacing: 8) {
+      HStack(spacing: 8) { shareButton; bookmarkButton }
+  }
+  ```
+- **Several tags.** Use plain `HStack`s of material capsules. Tags are content and don't need a container.
+- **Over imagery, the card body itself** can use `.background(.regularMaterial, in: .rect(cornerRadius: 24))`.
 
 ## Gotchas
-
-- The card body uses `.background(.background)` — a system **solid**, not glass. Resist the urge to glass-ify it.
-- Shadows on cards: subtle (`opacity 0.08`, radius 12). Anything heavier looks pre-iOS-26.
-- The chip's corner is implied by `.glassEffect()`'s default `.capsule`. If the chip wraps to two lines, switch to `.rect(cornerRadius: .containerConcentric)`.
+- Don't glass the card, the tag chips, or the title area. That puts glass in the content layer, and in a `LazyVStack` it also multiplies the number of effects on screen.
+- One glass control per card is plenty. The navigation bar above is where the real glass lives.
+- The bookmark's glass sits over the photo, so make sure the symbol reads over the brightest cover. Use `.regular` glass here, not `.clear`.
+- If a card nests rounded elements, declare the card's shape with `.containerShape(.rect(cornerRadius: 24))` and use concentric shapes inside.

@@ -1,0 +1,15 @@
+schema_version: "1.1"
+name: t3-cards-glass-or-solid
+tags: [trigger, positive]
+runs: 5
+execution:
+  max_turns: 2
+  timeout_seconds: 180
+  allowed_tools: [Read, Glob, Grep, Skill]
+  prompt: |
+    Should the photo cards in my iPhone travel app be glass, or a solid background?
+graders:
+  - name: skill-fired
+    type: tool_used
+    tool: Skill
+    input_match: '"skill"\s*:\s*"(?:[\w-]+:)?liquid-glass"'

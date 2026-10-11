@@ -1,130 +1,111 @@
-# Motion & Interaction
+# Motion and interaction
 
-Liquid Glass is animated by design. Static glass is a code smell — if a glass element never moves, refracts, or morphs, you're probably using glass where a solid surface would do.
+How Liquid Glass moves, what is automatic, and how to animate custom glass correctly.
+
+## Contents
+
+1. [What is automatic](#1-what-is-automatic)
+2. [Interactive glass](#2-interactive-glass)
+3. [Morphing](#3-morphing)
+4. [Glass transitions](#4-glass-transitions)
+5. [Symbol effects on glass](#5-symbol-effects-on-glass)
+6. [Drag](#6-drag)
+7. [Presentations that grow out of controls](#7-presentations-that-grow-out-of-controls)
+8. [Reduce Motion and Reduce Bright Effects](#8-reduce-motion-and-reduce-bright-effects)
+9. [Recipes](#9-recipes)
 
 ---
 
-## The three motion modes
+## 1. What is automatic
 
-| Mode | Trigger | API |
+Glass is meant to be **quiet at rest and alive on touch**. Apple: "This lets the resting state stay visually quiet, while it comes to life on touch" (WWDC25 219). Most system glass, such as toolbars and tab bars, never morphs, and that is correct. Whether something should be glass depends on its layer, not on whether it moves.
+
+| Motion | Trigger | What you write |
 |---|---|---|
-| **Specular highlights** | Device gyroscope | Automatic — no code |
-| **Interactive feedback** | Touch / drag | `.glassEffect(.regular.interactive())` |
-| **Morphing** | State change (view appear/disappear) | `GlassEffectContainer` + `.glassEffectID` |
+| Highlights | Geometry and interaction; "in some cases" device motion | Nothing |
+| Touch feedback (scale, bounce, shimmer) | Touching a glass button or interactive glass | `.buttonStyle(.glass)` / `.glassProminent`, or `.interactive()` on custom glass |
+| Morphing | Glass views appearing, disappearing, or changing inside one container | `GlassEffectContainer` + `glassEffectID` + `withAnimation` |
+| Materialize | Glass inserted or removed | Insert or remove inside `withAnimation`; optionally `.glassEffectTransition(.materialize)` |
+| Dialogs, menus, sheets | Presented from a control | Attach the presentation to the control ([§7](#7-presentations-that-grow-out-of-controls)) |
 
 ---
 
-## Interactive glass
+## 2. Interactive glass
 
-Adds touch-driven scaling, gentle bounce, specular highlight that follows the touch point, and drag awareness.
+`Glass.interactive(_:)` gives a custom glass view "the same responsive and fluid reactions" that the glass button style gives buttons.
 
 ```swift
-Button("Tap me") { /* … */ }
-    .glassEffect(.regular.interactive())
+// A custom control that isn't a standard button shape
+Button { recenter() } label: {
+    Image(systemName: "location.fill").frame(width: 44, height: 44)
+}
+.buttonStyle(.plain)
+.glassEffect(.regular.interactive(), in: .circle)
+.accessibilityLabel("Show my location")
 ```
 
-### When to enable
-- Any glass surface the user can tap, long-press, or drag
-- Icon buttons in a glass toolbar
-- Cards that respond to gestures
-
-### When NOT to enable
-- Non-interactive chrome (nav bar background, decorative pill)
-- Static labels or badges
-- Elements behind a modal (would suggest interactivity that isn't there)
+- **Turn it on for** custom glass that people tap, press, or drag.
+- **Turn it off for** labels, status chips, and decoration. Interactivity on something that does nothing misleads.
+- **Buttons.** Use `.buttonStyle(.glass)` or `.glassProminent`, which are already interactive.
+- **Don't add your own press effect** (`scaleEffect` on a zero-distance `DragGesture`) on top of interactive glass. The effect would double, and the gesture can steal taps and scrolls.
 
 ---
 
-## Morphing — the canonical recipe
+## 3. Morphing
+
+A complete example is in [01 § 4](01-api-reference.md#4-glasseffectid_in). The parts and what breaks without each:
+
+| Piece | Without it |
+|---|---|
+| One `GlassEffectContainer` around the morphing views | Shapes appear and disappear on their own. No blending. |
+| `@Namespace` + a unique `.glassEffectID(_:in:)` on each view | The system can't pair the before and after shapes |
+| The state change inside `withAnimation { }` | A hard cut. "Only affect their content during view hierarchy transitions or animations." |
+| Container `spacing` that reaches the neighbors | Distant shapes materialize instead of growing out of each other |
+
+Morphing fails silently: there is no error, only a cut. Check all four pieces when a morph doesn't happen.
+
+**Changing size or content of one glass view.** A glass view that changes size inside an animation animates its shape. You don't need an ID for that:
 
 ```swift
-struct MorphingMenu: View {
-    @State private var expanded = false
-    @Namespace private var ns
+struct UndoPill: View {
+    @State private var showsTitle = false
 
     var body: some View {
-        GlassEffectContainer(spacing: 24) {
-            VStack(spacing: 24) {
-                if expanded {
-                    icon("crop").glassEffectID("crop", in: ns)
-                    icon("rotate.right").glassEffectID("rotate", in: ns)
-                    icon("flip.horizontal").glassEffectID("flip", in: ns)
-                }
-                icon(expanded ? "xmark" : "wand.and.stars") {
-                    withAnimation(.bouncy) { expanded.toggle() }
-                }
-                .glassEffectID("toggle", in: ns)
+        Button {
+            withAnimation(.bouncy) { showsTitle.toggle() }
+        } label: {
+            HStack {
+                Image(systemName: "arrow.uturn.backward")
+                if showsTitle { Text("Undo Delete") }
             }
+            .padding(.horizontal, 16).padding(.vertical, 12)
         }
-    }
-
-    func icon(_ name: String, action: (() -> Void)? = nil) -> some View {
-        Button { action?() } label: {
-            Image(systemName: name)
-                .frame(width: 48, height: 48)
-        }
-        .buttonStyle(.glass)
-        .buttonBorderShape(.circle)
+        .buttonStyle(.plain)
+        .glassEffect(.regular.interactive())
+        .accessibilityLabel("Undo Delete")
     }
 }
 ```
 
-### Why each piece is required
-
-| Piece | Without it |
-|---|---|
-| `GlassEffectContainer` | Glass shapes pop in/out instead of morphing |
-| `@Namespace` | No identity → matched geometry can't pair the source and destination |
-| `.glassEffectID` | SwiftUI doesn't know which glass element corresponds across the state change |
-| `withAnimation(.bouncy)` | State changes apply instantly — no animation curve to morph along |
-
-Miss any of these and morphing silently fails (no error, no warning — just hard cuts).
-
 ---
 
-## Animation curves for glass
+## 4. Glass transitions
 
 ```swift
-.bouncy                              // default — playful, elastic
-.smooth(duration: 0.35)              // for nav-bar collapses, less elasticity
-.snappy                              // for instant toggles (selected ↔ unselected)
-.spring(response: 0.4, dampingFraction: 0.7)  // for drag returns
-
-.easeInOut(duration: 0.25)           // OK for non-glass; weak for glass morphs
-.linear                              // ❌ never for glass — kills the material feel
+.glassEffectTransition(.matchedGeometry)   // default within the container's spacing: grows out of a nearby shape
+.glassEffectTransition(.materialize)       // for distant shapes, or a simpler transition
+.glassEffectTransition(.identity)          // no glass transition
 ```
+
+- Apple: "For effects you want to add or remove that are positioned within the container's assigned spacing, the default transition type is matchedGeometry." "Use the materialize transition for effects you want to add or remove that are farther from each other than the container's assigned spacing."
+- Glass "materializes in and out by gradually modulating the light bending and lensing", which means it doesn't fade. **Don't use `.opacity` or `.transition(.opacity)` on glass views.** Keep those for non-glass content.
+- "To provide people with a consistent experience, use matchedGeometry and materialize transitions across your apps."
 
 ---
 
-## Transitions on individual glass views
+## 5. Symbol effects on glass
 
-```swift
-.glassEffectTransition(.materialize)      // "gel forms from nothing"
-.glassEffectTransition(.matchedGeometry)  // default with glassEffectID
-.glassEffectTransition(.identity)         // disable transition entirely
-```
-
-`.materialize` is the right choice when a glass element appears for the first time with no corresponding source — e.g., a notification badge popping into existence.
-
----
-
-## Distance and `spacing`
-
-The `spacing:` value on `GlassEffectContainer` controls **how close two glass shapes need to be to morph into one body**.
-
-```swift
-GlassEffectContainer(spacing: 8)   // morph aggressively — overlaps merge
-GlassEffectContainer(spacing: 24)  // typical floating menu
-GlassEffectContainer(spacing: 80)  // distant siblings still attract during transitions
-```
-
-If two elements should stay distinct, place them in **separate** containers.
-
----
-
-## Symbol effects + glass
-
-Liquid Glass pairs natively with SF Symbols 7 motion. The pattern:
+Animate the **symbol**. Glass buttons give touch feedback by themselves.
 
 ```swift
 struct LikeButton: View {
@@ -132,28 +113,32 @@ struct LikeButton: View {
 
     var body: some View {
         Button {
-            withAnimation(.bouncy) { liked.toggle() }
+            liked.toggle()
         } label: {
             Image(systemName: liked ? "heart.fill" : "heart")
+                .contentTransition(.symbolEffect(.replace))
                 .symbolEffect(.bounce, value: liked)
                 .font(.title2)
                 .frame(width: 48, height: 48)
         }
-        .glassEffect(.regular.interactive())
-        .tint(liked ? .red : .primary)
-        .contentTransition(.symbolEffect(.replace))
+        .buttonStyle(.glass)
+        .buttonBorderShape(.circle)
+        .foregroundStyle(liked ? Color.red : Color.primary)    // red carries meaning here: liked
+        .accessibilityLabel(liked ? "Unlike" : "Like")
     }
 }
 ```
 
-`contentTransition(.symbolEffect(.replace))` morphs between `heart` and `heart.fill` while the glass beneath morphs at the same time — the layered choreography is what makes iOS 26 feel alive.
+Both forms are iOS 17+: `contentTransition(.symbolEffect(.replace))` swaps the symbol, and `symbolEffect(_:options:value:)` plays a one-shot effect.
 
 ---
 
-## Drag interactions
+## 6. Drag
+
+Interactive glass reacts to touch while it's being dragged. Spring it back when the drag ends:
 
 ```swift
-struct DraggableGlassChip: View {
+struct DraggableChip: View {
     @State private var offset: CGSize = .zero
 
     var body: some View {
@@ -165,103 +150,77 @@ struct DraggableGlassChip: View {
                 DragGesture()
                     .onChanged { offset = $0.translation }
                     .onEnded { _ in
-                        withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) {
-                            offset = .zero
-                        }
+                        withAnimation(.spring(response: 0.4, dampingFraction: 0.75)) { offset = .zero }
                     }
             )
+            .accessibilityHidden(true)      // decorative demo; give real draggables an accessible alternative
     }
 }
 ```
 
-Interactive glass picks up drag automatically — the specular highlight tracks the touch point.
+---
+
+## 7. Presentations that grow out of controls
+
+- **Dialogs** "automatically morph out of the buttons that present them" (WWDC25 323), so attach `.confirmationDialog` or `.alert` to the presenting `Button`.
+- **Zoom sheets.** Put `matchedTransitionSource(id:in:)` on the button, or on the `ToolbarItem` (26.0, iOS/iPadOS/Catalyst), and `.navigationTransition(.zoom(sourceID:in:))` on the sheet content.
+- **Cross-fade sheets (iOS 27).** `.navigationTransition(.crossFade)` on the sheet content fades the sheet in over the content instead of sliding it up. It isn't available on macOS.
+- **Menus** from glass buttons expand out of the button automatically.
+
+Code is in [08 § 7](08-system-chrome.md#7-sheets-popovers-and-dialogs).
 
 ---
 
-## Zoom (matched) transitions for sheets and navigation
+## 8. Reduce Motion and Reduce Bright Effects
+
+**System glass.** "Reduced Motion decreases the intensity of some effects and disables any elastic properties for the material" (WWDC25 219). This is automatic.
+
+**Your own animations.** HIG Accessibility asks you to reduce "automatic and repetitive animations, including zooming, scaling, and peripheral motion". Tighten springs to reduce bounce, and replace movement transitions with fades. Make the motion calmer; don't remove the animation, because morphs and materialization rely on one.
 
 ```swift
-@Namespace var ns
+@Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-// Source
-Button("Details") { showDetails = true }
-    .matchedTransitionSource(id: "details", in: ns)
-
-// Destination
-.sheet(isPresented: $showDetails) {
-    DetailsView()
-        .navigationTransition(.zoom(sourceID: "details", in: ns))
+Button("Edit", systemImage: "slider.horizontal.3") {
+    withAnimation(reduceMotion ? .smooth : .bouncy) { expanded.toggle() }
 }
 ```
 
-The source button visually expands into the sheet — glass on the button morphs into the glass on the sheet's chrome.
+**Reduce Bright Effects (iOS 26.4).** When `accessibilityReduceHighlightingEffects` is true, controls "should be drawn in such a way that minimizes highlighting and flashing". Turn off custom shimmer, glow, or pulsing highlights you've added to glass controls.
 
 ---
 
-## Performance side of motion
+## 9. Recipes
 
-- Morphing inside `GlassEffectContainer` is **cheap** — one render pass.
-- Independent `.glassEffect()` siblings each take a render pass; many simultaneously animating can hitch on older devices.
-- `.interactive()` adds a per-frame gesture computation. Don't sprinkle it on dozens of static labels.
-
-Details: `06-performance.md`.
-
----
-
-## Reduce Motion
-
-When the user enables Reduce Motion, the system automatically:
-- Disables specular highlight tracking
-- Kills morphing animations (state changes still happen, but instantly)
-- Suppresses materialization transitions
-
-You generally **don't** need to write code for this — the system handles it. But if you're driving a custom animation:
-
-```swift
-@Environment(\.accessibilityReduceMotion) var reduceMotion
-
-withAnimation(reduceMotion ? nil : .bouncy) {
-    state.toggle()
-}
-```
-
----
-
-## Recipe library
-
-### Pop in
-```swift
-.transition(.scale.combined(with: .opacity))
-.animation(.bouncy, value: visible)
-```
-
-### Slide up from bottom (floating accessory)
-```swift
-.transition(.move(edge: .bottom).combined(with: .opacity))
-.animation(.smooth, value: visible)
-```
-
-### Morph between two glass states (selected toggle)
+**Add a glass element:**
 ```swift
 GlassEffectContainer(spacing: 16) {
-    if selected {
-        glassChip("Selected").glassEffectID("chip", in: ns)
-    } else {
-        glassChip("Tap to select").glassEffectID("chip", in: ns)
+    HStack(spacing: 16) {
+        primaryControl.glassEffectID("primary", in: ns)
+        if showsSecondary {
+            secondaryControl
+                .glassEffectID("secondary", in: ns)   // grows out of "primary" (within spacing)
+        }
     }
 }
+// withAnimation { showsSecondary.toggle() }
 ```
 
-### Press feedback (manual, for non-Button glass)
+**Show a far-away glass element:**
 ```swift
-@State private var pressed = false
+if showsHint {
+    HintBubble()
+        .glassEffect()
+        .glassEffectTransition(.materialize)
+}
+// withAnimation { showsHint = true }
+```
 
-view
-    .glassEffect(.regular.interactive())
-    .scaleEffect(pressed ? 0.96 : 1.0)
-    .gesture(
-        DragGesture(minimumDistance: 0)
-            .onChanged { _ in withAnimation(.snappy) { pressed = true } }
-            .onEnded   { _ in withAnimation(.snappy) { pressed = false } }
-    )
+**Switch glass off without removing the view.** The variant swap isn't documented to animate:
+```swift
+.glassEffect(isHighlighted ? .regular : .identity)
+```
+
+**Move non-glass content.** Ordinary transitions are fine there:
+```swift
+Text("Saved").transition(.move(edge: .top).combined(with: .opacity))
 ```

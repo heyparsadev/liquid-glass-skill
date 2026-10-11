@@ -1,11 +1,26 @@
 // ProfileScreen.swift
-// iOS 26 Liquid Glass example — hero header with cover photo, glass avatar ring,
-// glass tab switcher that morphs between Posts / Media / Likes.
+// Liquid Glass example: a profile with a cover image under the glass
+// navigation bar, a Follow button over the cover, a content switcher, and a
+// settings sheet that zooms out of its toolbar button.
+//
+// Functional layer (glass): the navigation bar and its items (system), the
+// prominent Follow button floating over the cover image (the one primary
+// action), and the sheet (system).
+// Content layer (no glass): the cover, the avatar (ringed with a standard
+// material), the posts, and the media grid.
+//
+// The Posts/Media/Likes switcher is a system Picker. It uses .segmented on
+// iOS 26 and .tabs on iOS 27, which looks the same on iOS but makes VoiceOver
+// announce the options as tabs.
+//
+// Requires: Xcode 27 to build (PickerStyle.tabs is gated with #available).
+// Runs on iOS 26 or later.
 
 import SwiftUI
 
 struct ProfileScreen: View {
     @State private var tab: ProfileTab = .posts
+    @State private var showSettings = false
     @Namespace private var ns
 
     var body: some View {
@@ -14,18 +29,15 @@ struct ProfileScreen: View {
                 VStack(spacing: 0) {
                     header
 
-                    // Glass tab switcher
-                    GlassEffectContainer(spacing: 4) {
-                        HStack(spacing: 4) {
-                            ForEach(ProfileTab.allCases) { t in
-                                tabSegment(t)
-                            }
+                    Picker("Section", selection: $tab) {
+                        ForEach(ProfileTab.allCases) { t in
+                            Text(t.title).tag(t)
                         }
                     }
+                    .contentTabsPickerStyle()
                     .padding(.horizontal)
                     .padding(.top, 20)
 
-                    // Content per tab
                     Group {
                         switch tab {
                         case .posts:  posts
@@ -34,62 +46,37 @@ struct ProfileScreen: View {
                         }
                     }
                     .padding(.top, 16)
-                    .transition(.opacity)
                 }
             }
             .ignoresSafeArea(edges: .top)
+            .animation(.smooth, value: tab)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Settings", systemImage: "gearshape") { }
+                    Button("Settings", systemImage: "gearshape") { showSettings = true }
                 }
+                .matchedTransitionSource(id: "settings", in: ns)   // ToolbarContent version (iOS 26)
+
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Share", systemImage: "square.and.arrow.up") { }
                 }
             }
-        }
-    }
-
-    // `.glass` and `.glassProminent` are different concrete ButtonStyle types, and
-    // `.white` and `.primary` are different ShapeStyle types, so neither can be
-    // selected with a ternary — branch on the whole button instead.
-    @ViewBuilder
-    private func tabSegment(_ t: ProfileTab) -> some View {
-        if t == tab {
-            tabButton(t)
-                .buttonStyle(.glassProminent)
-                .tint(.accentColor)
-                .foregroundStyle(.white)
-                .glassEffectID("tab-\(t.rawValue)", in: ns)
-        } else {
-            tabButton(t)
-                .buttonStyle(.glass)
-                .tint(.clear)
-                .foregroundStyle(.primary)
-                .glassEffectID("tab-\(t.rawValue)", in: ns)
-        }
-    }
-
-    private func tabButton(_ t: ProfileTab) -> some View {
-        Button {
-            withAnimation(.bouncy) { tab = t }
-        } label: {
-            Text(t.title)
-                .font(.callout.weight(.medium))
-                .padding(.horizontal, 16)
-                .padding(.vertical, 10)
-                .frame(maxWidth: .infinity)
+            .sheet(isPresented: $showSettings) {
+                ProfileSettingsSheet()
+                    .presentationDetents([.medium, .large])
+                    .navigationTransition(.zoom(sourceID: "settings", in: ns))
+            }
         }
     }
 
     private var header: some View {
         ZStack(alignment: .bottomLeading) {
-            // Cover
+            // Cover: content that scrolls under the glass navigation bar
             LinearGradient(
                 colors: [.purple, .pink, .orange],
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
             )
-            .frame(height: 240)
+            .frame(height: 260)
             .overlay {
                 ForEach(0..<6, id: \.self) { i in
                     Circle().fill(.white.opacity(0.15)).blur(radius: 40)
@@ -97,6 +84,7 @@ struct ProfileScreen: View {
                         .offset(x: CGFloat(i * 60) - 200, y: CGFloat(i * 30) - 100)
                 }
             }
+            .accessibilityHidden(true)
 
             // Identity row
             HStack(alignment: .bottom, spacing: 16) {
@@ -104,17 +92,14 @@ struct ProfileScreen: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Lyra Calder")
                         .font(.title2.bold())
-                        .foregroundStyle(.white)
                     Text("@lyracalder")
                         .font(.callout)
-                        .foregroundStyle(.white.opacity(0.8))
+                        .foregroundStyle(.white.opacity(0.85))
                 }
+                .foregroundStyle(.white)
                 Spacer()
                 Button("Follow") { }
-                    .buttonStyle(.glassProminent)
-                    .tint(.white.opacity(0.25))
-                    .foregroundStyle(.white)
-                    .controlSize(.regular)
+                    .buttonStyle(.glassProminent)     // the one primary action; accent-colored background
             }
             .padding()
         }
@@ -125,9 +110,10 @@ struct ProfileScreen: View {
             .font(.system(size: 40))
             .foregroundStyle(.white)
             .frame(width: 88, height: 88)
-            .background(.indigo, in: Circle())
+            .background(.indigo, in: .circle)
             .padding(4)
-            .glassEffect(.regular, in: .circle)
+            .background(.ultraThinMaterial, in: .circle)   // content: a material ring, not glass
+            .accessibilityLabel("Profile photo")
     }
 
     private var posts: some View {
@@ -154,8 +140,7 @@ struct ProfileScreen: View {
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(.background)
-        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .background(.background, in: .rect(cornerRadius: 20, style: .continuous))
         .shadow(color: .black.opacity(0.05), radius: 8, y: 2)
     }
 
@@ -175,9 +160,29 @@ struct ProfileScreen: View {
     }
 
     private var likes: some View {
-        VStack {
-            ContentUnavailableView("No likes yet", systemImage: "heart")
-                .padding(.top, 40)
+        ContentUnavailableView("No likes yet", systemImage: "heart")
+            .padding(.top, 40)
+    }
+}
+
+private struct ProfileSettingsSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    @State private var privateAccount = false
+    @State private var showActivity = true
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Toggle("Private Account", isOn: $privateAccount)
+                Toggle("Show Activity Status", isOn: $showActivity)
+            }
+            .navigationTitle("Profile Settings")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button(role: .close) { dismiss() }    // the standard ✕ (iOS 26)
+                }
+            }
         }
     }
 }
@@ -186,6 +191,18 @@ private enum ProfileTab: String, CaseIterable, Identifiable {
     case posts, media, likes
     var id: Self { self }
     var title: String { rawValue.capitalized }
+}
+
+private extension View {
+    /// `.tabs` on iOS 27 (VoiceOver announces "tab"), `.segmented` earlier.
+    @ViewBuilder
+    func contentTabsPickerStyle() -> some View {
+        if #available(iOS 27.0, *) {
+            pickerStyle(.tabs)
+        } else {
+            pickerStyle(.segmented)
+        }
+    }
 }
 
 #Preview {

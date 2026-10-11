@@ -1,0 +1,17 @@
+schema_version: "1.1"
+name: n4-coffee-shop-logo
+tags: [trigger, negative]
+runs: 5
+execution:
+  max_turns: 2
+  timeout_seconds: 180
+  allowed_tools: [Read, Glob, Grep, Skill]
+  prompt: |
+    Design a logo for my coffee shop.
+graders:
+  - name: skill-not-fired
+    type: tool_used
+    tool: Skill
+    input_match: '"skill"\s*:\s*"(?:[\w-]+:)?liquid-glass"'
+    min: 0
+    max: 0

@@ -1,6 +1,18 @@
 // ChatScreen.swift
-// iOS 26 Liquid Glass example — message thread with a floating glass input bar
-// that morphs to reveal media/quick-reply buttons when focused.
+// Liquid Glass example: a message thread with a floating glass composer.
+// While the field is focused, the camera and mic buttons merge into the + button.
+//
+// Functional layer (glass): the navigation bar (system), and the composer: one
+// GlassEffectContainer holding the + button, the camera and mic buttons, and
+// the text field. The field's shape is a rounded rectangle so multi-line input
+// stays legible.
+// Content layer (no glass): the message bubbles.
+//
+// The composer is pinned with safeAreaInset, not safeAreaBar. The iOS 26.1
+// release notes list a known issue (158720838): @FocusState doesn't work
+// inside safeAreaBar.
+//
+// Requires: Xcode 26 or later, iOS 26 or later.
 
 import SwiftUI
 
@@ -8,6 +20,7 @@ struct ChatScreen: View {
     @State private var draft = ""
     @FocusState private var inputFocused: Bool
     @Namespace private var ns
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     @State private var messages: [Message] = .sample
 
@@ -30,10 +43,8 @@ struct ChatScreen: View {
             .navigationTitle("Lyra Calder")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
+                ToolbarItemGroup(placement: .topBarTrailing) {
                     Button("Call", systemImage: "phone.fill") { }
-                }
-                ToolbarItem(placement: .topBarTrailing) {
                     Button("Video", systemImage: "video.fill") { }
                 }
             }
@@ -47,33 +58,34 @@ struct ChatScreen: View {
 
     private var inputBar: some View {
         GlassEffectContainer(spacing: 10) {
-            HStack(spacing: 10) {
+            HStack(alignment: .bottom, spacing: 10) {
                 Button {
                     inputFocused = false
                 } label: {
                     Image(systemName: inputFocused ? "chevron.right" : "plus")
+                        .contentTransition(.symbolEffect(.replace))
                         .font(.title3.weight(.semibold))
                         .frame(width: 40, height: 40)
-                        .contentTransition(.symbolEffect(.replace))
                 }
                 .buttonStyle(.glass)
                 .buttonBorderShape(.circle)
                 .tint(.primary)
+                .accessibilityLabel(inputFocused ? "Show Attachments" : "Attachments")
                 .glassEffectID("plus", in: ns)
 
                 if !inputFocused {
-                    quickButton("camera.fill")
+                    // No opacity transitions: these grow out of and merge back into "plus".
+                    quickButton("camera.fill", label: "Camera")
                         .glassEffectID("camera", in: ns)
-                        .transition(.scale.combined(with: .opacity))
-                    quickButton("mic.fill")
+                    quickButton("mic.fill", label: "Voice Message")
                         .glassEffectID("mic", in: ns)
-                        .transition(.scale.combined(with: .opacity))
                 }
 
-                HStack {
+                HStack(alignment: .bottom) {
                     TextField("Message", text: $draft, axis: .vertical)
                         .lineLimit(1...5)
                         .focused($inputFocused)
+                        .padding(.vertical, 4)
                     if !draft.isEmpty {
                         Button {
                             send()
@@ -82,22 +94,23 @@ struct ChatScreen: View {
                                 .font(.body.weight(.semibold))
                                 .foregroundStyle(.white)
                                 .frame(width: 28, height: 28)
-                                .background(.blue, in: .circle)
+                                .background(.blue, in: .circle)   // a fill on the glass, not more glass
                         }
-                        .transition(.scale.combined(with: .opacity))
+                        .accessibilityLabel("Send")
+                        .transition(.scale.combined(with: .opacity))   // fine here: the fill isn't glass
                     }
                 }
                 .padding(.horizontal, 14)
                 .padding(.vertical, 8)
-                .glassEffect(.regular, in: .capsule)
+                .glassEffect(.regular, in: .rect(cornerRadius: 20))
                 .glassEffectID("field", in: ns)
             }
         }
-        .animation(.bouncy, value: inputFocused)
+        .animation(reduceMotion ? .smooth : .bouncy, value: inputFocused)
         .animation(.snappy, value: draft.isEmpty)
     }
 
-    private func quickButton(_ symbol: String) -> some View {
+    private func quickButton(_ symbol: String, label: String) -> some View {
         Button { } label: {
             Image(systemName: symbol)
                 .font(.title3)
@@ -106,12 +119,13 @@ struct ChatScreen: View {
         .buttonStyle(.glass)
         .buttonBorderShape(.circle)
         .tint(.primary)
+        .accessibilityLabel(label)
     }
 
     private func send() {
         guard !draft.isEmpty else { return }
         let text = draft
-        withAnimation(.bouncy) {
+        withAnimation {
             messages.append(.init(text: text, fromMe: true))
             draft = ""
         }
